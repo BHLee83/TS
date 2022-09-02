@@ -1,4 +1,5 @@
 from config import Config
+import pandas_oracle.tools as pt
 import pymysql
  
 class mysqlDB:
@@ -50,3 +51,33 @@ class mysqlDB:
  
     def rows(self):
         return self.cursor.rowcount
+
+
+class oracleDB:
+    def __init__(self, dbname):
+        if dbname.lower() == 'oradb1':
+            self._conn=pt.open_connection('config.yml')
+        self._cursor = self._conn.cursor()
+ 
+    def __enter__(self):
+        return pt
+ 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+ 
+    @property
+    def connection(self):
+        return self._conn
+ 
+    @property
+    def cursor(self):
+        return self._cursor
+
+    def execute(self, sql):
+        pt.execute(sql, self.connection)
+
+    def query_to_df(self, sql, count):
+        pt.query_to_df(sql, self.connection, count)
+
+    def close(self):
+        pt.close_connection(self.connection)
