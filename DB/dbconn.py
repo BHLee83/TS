@@ -12,7 +12,7 @@ class mysqlDB:
                 port=3306,
                 database=Config.DATABASE_CONFIG_TS['dbname']
             )
-        self._cursor = self._conn.cursor()
+        self._cursor = self._conn.cursor(pymysql.cursors.DictCursor)
  
     def __enter__(self):
         return self
