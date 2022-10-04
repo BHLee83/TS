@@ -73,8 +73,14 @@ class oracleDB:
     def cursor(self):
         return self._cursor
 
+    def commit(self):
+        return self.connection.commit()
+
     def execute(self, sql):
         return pt.execute(sql, self.connection)
+
+    def executemany(self, sql, params):
+        self.cursor.executemany(sql, params)
 
     def query_to_df(self, sql, count):
         return pt.query_to_df(sql, self.connection, count)
