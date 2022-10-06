@@ -2,7 +2,7 @@ from DB.dbconn import oracleDB
 import pandas as pd
 
 # Raw data
-f = '20221004'
+f = '20221005'
 df = pd.read_csv('C:/Infomax/bin/usr/scinfo/local/Data/' + f + '.csv', encoding='euc-kr')
 df.sort_index(axis=0, ascending=False, inplace=True)
 df.reset_index(inplace=True)
@@ -23,5 +23,5 @@ dfResult['VOLUME'] = None
 
 # Insert
 db = oracleDB('oradb1')
-db.executemany("INSERT INTO marketdata_tick VALUES (:1, :2, :3, :4, :5, :6, :7)", dfResult.values.tolist())
+db.executemany("INSERT INTO market_data_tick VALUES (:1, :2, :3, :4, :5, :6, :7)", dfResult.values.tolist())
 db.commit()
