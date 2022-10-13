@@ -1,6 +1,4 @@
 from PyQt5.QAxContainer import *
-from PyQt5.QtWidgets import QLineEdit
-from PyQt5.QtWidgets import QPushButton
 from price import Price
 from account import Account
 
@@ -8,26 +6,18 @@ from account import Account
 class Interface():
     def __init__(self, IndiWindow):
         self.wndIndi = IndiWindow
-        self.dfAccInfo = ""
 
-        # QT 타이틀
-        self.wndIndi.setWindowTitle("Shinhan-i Indi TradingSystem")
-
-        self.userEnv = Account()
-        self.price = Price()
+        self.userEnv = Account(self.wndIndi)    # 계좌 정보
+        self.price = Price(self.wndIndi)    # 시세 정보
         if self.userEnv.userLogin():
-            self.dfAccInfo = self.userEnv.getAccount()
+            # ComboBox에서 종목 선택시
+            # self.wndIndi.cbProductCode.currentIndexChanged.connect(lambda: self.price.stopTR())
+            self.wndIndi.cbProductCode.currentIndexChanged.connect(self.price.stopTR)   # 기존 수신중 시세 중지
 
-            # PyQt5를 통해 화면을 그려주는 코드입니다.
-            self.MainSymbol = "165SC"
-            self.edSymbol = QLineEdit(self.wndIndi)
-            self.edSymbol.setGeometry(20, 20, 60, 20)
-            self.edSymbol.setText(self.MainSymbol)
-
-            # PyQt5를 통해 버튼만들고 함수와 연결시킵니다.
-            btnResearch = QPushButton("시세수신", self.wndIndi)
-            btnResearch.setGeometry(85, 20, 60, 20)
-            btnResearch.clicked.connect(self.btn_Request) # 버튼을 누르면 'btn_Request' 함수가 실행됩니다.
+            # 시세수신 버튼 클릭시
+            self.wndIndi.pbRqPrice.clicked.connect(self.btn_Price_Request)
     
-    def btn_Request(self):
-        self.price.request(self.edSymbol.text())
+    def btn_Price_Request(self):
+        # 기존 QtableWidget 내용 삭제 (clear메서드가 확실하지만, column명도 다 날라가서 다시 세팅하기 귀찮음;; Memory leak 발생하는지 확인 필요.)
+        self.wndIndi.twProductInfo.setRowCount(0)
+        self.price.startTR()    # 시세 수신
