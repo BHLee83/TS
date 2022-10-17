@@ -1,7 +1,8 @@
-from config import Config
+from SHi_indi.config import Config
 from PyQt5.QAxContainer import *
-from interfaceRT import InterfaceRT
+from SHi_indi.interfaceRT import InterfaceRT
 import pandas as pd
+import time
 
 class Account():
     def __init__(self, wndIndi):
@@ -27,12 +28,12 @@ class Account():
 
     def userLogin(self):
         # 신한i Indi 자동로그인
-        # while True:
-        #     login = self.IndiTR.StartIndi(self.id, self.pwd, self.authpwd, self.indipath)
-        #     if login == True :
-        #         print('Logged in successfully!')
-        self.setAccount()
-        return True
+        while True:
+            login = self.IndiTR.StartIndi(self.id, self.pwd, self.authpwd, self.indipath)
+            if login == True :
+                time.sleep(3) # 로그인 후 계좌정보 받아오는데 시간 걸려서 일단 이렇게...;; (로그인 후 공지창 윈도우 인스턴스 확인하는 방법 등으로 변경 필요)
+                print('Logged in successfully!')
+                return True
 
     def setAccount(self):
         # AccountList : 계좌목록 조회를 요청할 TR
@@ -60,4 +61,4 @@ class Account():
 
     # 시스템 메시지를 받은 경우 출력
     def ReceiveSysMsg(self, MsgID):
-        self.wndIndi.setSysMsgOnStatusBar(MsgID, __file__)
+        self.instInterfaceRT.setSysMsgOnStatusBar(MsgID, __file__)

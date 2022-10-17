@@ -72,4 +72,4 @@ class Order():
             print("매수 및 매도 주문결과 :", DATA)
 
     def ReceiveSysMsg(self, MsgID):
-        self.wndIndi.setSysMsgOnStatusBar(MsgID, __file__)
+        self.instInterfaceRT.setSysMsgOnStatusBar(MsgID, __file__)

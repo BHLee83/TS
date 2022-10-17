@@ -1,20 +1,21 @@
 from PyQt5.QAxContainer import *
 import numpy as np
 import pandas as pd
-from interfaceRT import InterfaceRT
+from SHi_indi.interfaceRT import InterfaceRT
+from Strategy.strategyRT import StrategyRT
+
 
 class Price():
     def __init__(self, wndIndi):
         self.wndIndi = wndIndi
+        # self.lstObj_Strategy = lstObj_Strategy
         
         # 인디의 TR을 처리할 변수를 생성합니다.
         self.IndiTR = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")
-        self.IndiReal = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")
 
         # Indi API event
         self.IndiTR.ReceiveData.connect(self.ReceiveData)
         self.IndiTR.ReceiveSysMsg.connect(self.ReceiveSysMsg)
-        self.IndiReal.ReceiveRTData.connect(self.ReceiveRTData)
 
         self.rqidD = {} # TR 관리를 위해 사전 변수를 하나 생성
 
@@ -24,6 +25,7 @@ class Price():
         self.rqidD[rqid] =  "cfut_mst"
 
         # 데이터
+        self.objStrategy = None
         self.currentCode = None
 
         self.dfCFutMst = pd.DataFrame(None, columns={'표준코드', '단축코드', '파생상품ID', '한글종목명', '기초자산ID', '스프레드근월물표준코드', '스프레드원월물표준코드', '최종거래일', '기초자산종목코드', '거래단위', '거래승수'})
@@ -36,44 +38,20 @@ class Price():
         Historicaldt = np.dtype([('일자', 'S8'), ('시간', 'S6'), ('시가', 'f'), ('고가', 'f'), ('저가', 'f'), ('종가', 'f'), ('단위거래량', 'u4')])
         self.Historical = np.empty([9999], dtype=Historicaldt)
 
-        # 수신 데이터 전달
-        self.instInterfaceRT = InterfaceRT(self.wndIndi)
-    
-    def stopTR(self):
-        if self.currentCode != None:
-            self.IndiReal.dynamicCall("UnRequestRTReg(QString, QString)", "MB", self.currentCode)
-            self.IndiReal.dynamicCall("UnRequestRTReg(QString, QString)", "MC", self.currentCode)
-            self.IndiReal.dynamicCall("UnRequestRTReg(QString, QString)", "MH", self.currentCode)
-
-    def startTR(self):
-        # 기존종목 실시간 해제
-        self.stopTR()
-
         # 현재 종목코드 정보
         self.currentCode = self.wndIndi.cbProductCode.currentText().upper()
 
-        # 차트조회
-        ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "TR_CFCHART")
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, self.currentCode)    # 단축코드
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, "D")    # 그래프 종류 (1:분데이터, D:일데이터, W:주데이터, M:월데이터)
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, "1")    # 시간간격 (분데이터일 경우: 1 – 30, 일/주/월데이터일 경우: 1)
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, "00000000") # 시작일 (YYYYMMDD, 분 데이터 요청시 : “00000000”)
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, "99999999") # 종료일 (YYYYMMDD, 분 데이터 요청시 : “99999999”)
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 5, "9999")  # 조회갯수 (1-9999)
-        rqid = self.IndiTR.dynamicCall("RequestData()")
-        self.rqidD[rqid] =  "TR_CFCHART"
-
         # 종목 기본정보 조회
-        ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "MB")
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, self.currentCode)
-        rqid = self.IndiTR.dynamicCall("RequestData()")
-        self.rqidD[rqid] = "MB"
+        # ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "MB")
+        # ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, self.currentCode)
+        # rqid = self.IndiTR.dynamicCall("RequestData()")
+        # self.rqidD[rqid] = "MB"
 
         # 종목 현재가 조회
-        ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "MC")
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, self.currentCode)
-        rqid = self.IndiTR.dynamicCall("RequestData()")
-        self.rqidD[rqid] = "MC"
+        # ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "MC")
+        # ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, self.currentCode)
+        # rqid = self.IndiTR.dynamicCall("RequestData()")
+        # self.rqidD[rqid] = "MC"
 
         # 종목 호가 조회
         # ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "MH")
@@ -87,6 +65,18 @@ class Price():
         elif dictCFutMst['파생상품ID'] != str(self.dfCFutMst['파생상품ID'][-1:].values[0]):
             self.wndIndi.cbProductCode.addItem(dictCFutMst['단축코드'])
 
+    # 과거(차트) 데이터 조회
+    def rqHistoricalData(self, objStrategy):
+        self.objStrategy = objStrategy
+        ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "TR_CFCHART")
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, objStrategy.strProductCode)    # 단축코드
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, objStrategy.strTimeFrame)    # 그래프 종류 (1:분데이터, D:일데이터, W:주데이터, M:월데이터)
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, objStrategy.strTimeIntrv)    # 시간간격 (분데이터일 경우: 1 – 30, 일/주/월데이터일 경우: 1)
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, objStrategy.strStartDate) # 시작일 (YYYYMMDD, 분 데이터 요청시 : “00000000”)
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, objStrategy.strEndDate) # 종료일 (YYYYMMDD, 분 데이터 요청시 : “99999999”)
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 5, "9999")  # 조회갯수 (1-9999)
+        rqid = self.IndiTR.dynamicCall("RequestData()")
+        self.rqidD[rqid] =  "TR_CFCHART"
 
     # 요청한 TR로 부터 데이터 수신
     def ReceiveData(self, rqid):
@@ -128,7 +118,9 @@ class Price():
                 self.Historical[i]['저가'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 4)
                 self.Historical[i]['종가'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 5)
                 self.Historical[i]['단위거래량'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 9)
-                print(self.Historical[i])
+                # print(self.Historical[i])
+
+            self.objStrategy.setHistoricalData(self.Historical)
 
         # 종목 기본정보 수신
         elif TRName == "MB":
@@ -137,8 +129,6 @@ class Price():
             self.PriceInfo[0]['하한가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 14)
             self.PriceInfo[0]['전일종가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 38)
             print(self.PriceInfo[0])
-            # 실시간 등록
-            ret = self.IndiReal.dynamicCall("RequestRTReg(QString, QString)", "MB", self.currentCode)
         
         # 종목 현재가 수신
         elif TRName == "MC":
@@ -150,10 +140,9 @@ class Price():
             self.PriceInfo[0]['시가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 12)
             self.PriceInfo[0]['고가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 13)
             self.PriceInfo[0]['저가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 14)
-            # 실시간 등록
-            ret = self.IndiReal.dynamicCall("RequestRTReg(QString, QString)", "MC", self.currentCode)
 
-            # 화면 갱신
+            # Data transfer
+            self.instStrategy.setPriceInfo(self.PriceInfo[0])
             self.instInterfaceRT.setTableWidgetData(self.PriceInfo[0])
 
         # 종목 호가 수신
@@ -162,44 +151,10 @@ class Price():
             self.PriceInfo[0]['매수1호가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 4)
             self.PriceInfo[0]['매도1호가수량'] = self.IndiTR.dynamicCall("GetSingleData(int)", 5)
             self.PriceInfo[0]['매수1호가수량'] = self.IndiTR.dynamicCall("GetSingleData(int)", 6)
-            # 실시간 등록
-            ret = self.IndiReal.dynamicCall("RequestRTReg(QString, QString)", "MH", self.currentCode)
 
         self.rqidD.__delitem__(rqid)
 
 
-    def ReceiveRTData(self, RealType):
-        # 종목 기본정보 실시간 수신
-        if RealType == "MB":
-            self.PriceInfo[0]['한글종목명'] = self.IndiReal.dynamicCall("GetSingleData(int)", 5).decode('utf-8')
-            self.PriceInfo[0]['상한가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 13)
-            self.PriceInfo[0]['하한가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 14)
-            self.PriceInfo[0]['전일종가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 38)
-
-        # 종목 현재가 실시간 수신
-        elif RealType == "MC":
-            self.PriceInfo[0]['단축코드'] = self.IndiReal.dynamicCall("GetSingleData(int)", 1)
-            self.PriceInfo[0]['체결시간'] = self.IndiReal.dynamicCall("GetSingleData(int)", 2)
-            self.PriceInfo[0]['현재가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 4)
-            self.PriceInfo[0]['누적거래량'] = self.IndiReal.dynamicCall("GetSingleData(int)", 8)
-            self.PriceInfo[0]['단위체결량'] = self.IndiReal.dynamicCall("GetSingleData(int)", 10)
-            self.PriceInfo[0]['시가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 12)
-            self.PriceInfo[0]['고가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 13)
-            self.PriceInfo[0]['저가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 14)
-
-            # 화면 갱신
-            self.instInterfaceRT.setTableWidgetData(self.PriceInfo[0])
-            
-        # 종목 호가 실시간 수신
-        elif RealType == "MH":
-            self.PriceInfo[0]['매도1호가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 3)
-            self.PriceInfo[0]['매수1호가'] = self.IndiReal.dynamicCall("GetSingleData(int)", 4)
-            self.PriceInfo[0]['매도1호가수량'] = self.IndiReal.dynamicCall("GetSingleData(int)", 5)
-            self.PriceInfo[0]['매수1호가수량'] = self.IndiReal.dynamicCall("GetSingleData(int)", 6)
-
-        print(self.PriceInfo[0])
-
-
     # 시스템 메시지를 받은 경우 출력
     def ReceiveSysMsg(self, MsgID):
-        self.wndIndi.setSysMsgOnStatusBar(MsgID, __file__)
+        self.instInterfaceRT.setSysMsgOnStatusBar(MsgID, __file__)
