@@ -1,12 +1,10 @@
 from SHi_indi.config import Config
 from PyQt5.QAxContainer import *
-from SHi_indi.interfaceRT import InterfaceRT
 import pandas as pd
-import time
 
 class Account():
-    def __init__(self, wndIndi):
-        self.wndIndi = wndIndi
+    def __init__(self, instInterface):
+        self.instInterface = instInterface
 
         # Login Info.
         self.id = Config.SHi_Indi_Connection['id']
@@ -15,7 +13,7 @@ class Account():
         self.indipath = Config.SHi_Indi_Connection['indipath']
 
         # Acc. Info
-        self.dfAcntInfo = pd.DataFrame(None, columns={'Acnt_Code', 'Acnt_Name'})
+        self.dfAcntInfo = pd.DataFrame(None, columns={'Acnt_Code', 'Acnt_Name', 'Acnt_Pwd'})
 
         # Indi API event
         self.IndiTR = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")
@@ -23,16 +21,12 @@ class Account():
         self.IndiTR.ReceiveSysMsg.connect(self.ReceiveSysMsg)
         self.rqidD = {} # TR 관리를 위해 사전 변수를 하나 생성합니다.
 
-        # 수신 데이터 전달
-        self.instInterfaceRT = InterfaceRT(self.wndIndi)
-
     def userLogin(self):
         # 신한i Indi 자동로그인
         while True:
             login = self.IndiTR.StartIndi(self.id, self.pwd, self.authpwd, self.indipath)
             if login == True :
-                time.sleep(3) # 로그인 후 계좌정보 받아오는데 시간 걸려서 일단 이렇게...;; (로그인 후 공지창 윈도우 인스턴스 확인하는 방법 등으로 변경 필요)
-                print('Logged in successfully!')
+                # print('Logged in successfully!')
                 return True
 
     def setAccount(self):
@@ -41,19 +35,24 @@ class Account():
         self.rqid = self.IndiTR.dynamicCall("RequestData()") # 데이터 요청
         self.rqidD[self.rqid] =  "AccountList"
 
-    def getAccount(self):
-        return self.dfAcntInfo
+    def getAccount(self, acntCode=None):
+        if acntCode == None:
+            return self.dfAcntInfo
+        else:
+            return self.dfAcntInfo[self.dfAcntInfo['Acnt_Code']==acntCode]
 
     def ReceiveData(self, rqid):
         if self.rqidD[rqid] == "AccountList" :
             self.nCnt = self.IndiTR.dynamicCall("GetMultiRowCount()")
         
+            self.instInterface.wndIndi.cbAcntCode.clear()
             self.dictAcntInfo = {}
             for i in range(0, self.nCnt):
                 self.dictAcntInfo['Acnt_Code'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 0)  # 계좌번호
                 self.dictAcntInfo['Acnt_Name'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 1)  # 계좌명
+                self.dictAcntInfo['Acnt_Pwd'] = Config.SHi_Indi_Connection['acntpwd']  # 계좌 비밀번호
                 
-                self.wndIndi.cbAcntCode.addItem(self.dictAcntInfo['Acnt_Code'])
+                self.instInterface.wndIndi.cbAcntCode.addItem(self.dictAcntInfo['Acnt_Code'])
                 self.dfAcntInfo = self.dfAcntInfo.append(self.dictAcntInfo, ignore_index=True)
             # print(self.dfAcntInfo)
 
@@ -61,4 +60,4 @@ class Account():
 
     # 시스템 메시지를 받은 경우 출력
     def ReceiveSysMsg(self, MsgID):
-        self.instInterfaceRT.setSysMsgOnStatusBar(MsgID, __file__)
+        self.instInterface.setSysMsgOnStatusBar(MsgID, __file__)

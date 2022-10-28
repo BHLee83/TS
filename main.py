@@ -18,7 +18,7 @@ class IndiWindow(QMainWindow, form_class):
         self.setupUi(self)
         self.instInterface = Interface(self)
 
-
+    
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     IndiWindow = IndiWindow()
