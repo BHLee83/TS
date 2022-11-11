@@ -21,6 +21,7 @@ class Account():
         self.IndiTR.ReceiveSysMsg.connect(self.ReceiveSysMsg)
         self.rqidD = {} # TR 관리를 위해 사전 변수를 하나 생성합니다.
 
+
     def userLogin(self):
         # 신한i Indi 자동로그인
         while True:
@@ -29,17 +30,20 @@ class Account():
                 # print('Logged in successfully!')
                 return True
 
+
     def setAccount(self):
         # AccountList : 계좌목록 조회를 요청할 TR
         self.ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "AccountList")
         self.rqid = self.IndiTR.dynamicCall("RequestData()") # 데이터 요청
         self.rqidD[self.rqid] =  "AccountList"
+        
 
     def getAccount(self, acntCode=None):
         if acntCode == None:
             return self.dfAcntInfo
         else:
             return self.dfAcntInfo[self.dfAcntInfo['Acnt_Code']==acntCode]
+
 
     def ReceiveData(self, rqid):
         if self.rqidD[rqid] == "AccountList" :
@@ -57,6 +61,8 @@ class Account():
             # print(self.dfAcntInfo)
 
         self.rqidD.__delitem__(rqid)
+        self.instInterface.event_loop.exit()
+
 
     # 시스템 메시지를 받은 경우 출력
     def ReceiveSysMsg(self, MsgID):

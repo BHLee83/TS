@@ -22,6 +22,7 @@ class Price():
         # 데이터
         # self.objCurrentStrategy = None
         self.currentProductCode = None
+        self.currentProductNCode = None
         self.strRqPeriod = None
 
         self.dfCFutMst = pd.DataFrame(None, columns={'표준코드', '단축코드', '파생상품ID', '한글종목명', '기초자산ID', '스프레드근월물표준코드', '스프레드원월물표준코드', '최종거래일', '기초자산종목코드', '거래단위', '거래승수'})
@@ -42,20 +43,37 @@ class Price():
         self.rqidD[rqid] =  tr
 
     
-    # 과거(차트) 데이터 조회
-    def rqHistData(self, strProductCode, strTimeFrame, strTimeIntrv, strStartDate, strEndDate, strRqCnt):
+    # # 과거(차트) 데이터 조회 (월물별)
+    # def rqHistData(self, strProductCode, strTimeFrame, strTimeIntrv, strStartDate, strEndDate, strRqCnt):
+    #     self.currentProductCode = strProductCode
+    #     self.strRqPeriod = Strategy.convertTimeFrame(strTimeFrame, strTimeIntrv)
+
+    #     ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "TR_CFCHART")
+    #     ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, strProductCode)    # 단축코드
+    #     ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, strTimeFrame)    # 그래프 종류 (1:분데이터, D:일데이터)
+    #     ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, strTimeIntrv)    # 시간간격 (분데이터일 경우: 1 – 30, 일데이터일 경우: 1)
+    #     ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, strStartDate) # 시작일 (YYYYMMDD, 분 데이터 요청시 : “00000000”)
+    #     ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, strEndDate) # 종료일 (YYYYMMDD, 분 데이터 요청시 : “99999999”)
+    #     ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 5, strRqCnt)  # 조회갯수 (1-9999)
+    #     rqid = self.IndiTR.dynamicCall("RequestData()")
+    #     self.rqidD[rqid] =  "TR_CFCHART"
+
+
+    # 과거(차트) 데이터 조회 (연결선물)
+    def rqHistData(self, strProductNCode, strProductCode, strTimeFrame, strTimeIntrv, strStartDate, strEndDate, strRqCnt):
         self.currentProductCode = strProductCode
+        self.currentProductNCode = strProductNCode
         self.strRqPeriod = Strategy.convertTimeFrame(strTimeFrame, strTimeIntrv)
 
-        ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "TR_CFCHART")
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, strProductCode)    # 단축코드
+        ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "TR_CFNCHART")
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, strProductNCode)    # 연결선물 코드
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, strTimeFrame)    # 그래프 종류 (1:분데이터, D:일데이터, W:주데이터, M:월데이터)
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, strTimeIntrv)    # 시간간격 (분데이터일 경우: 1 – 30, 일/주/월데이터일 경우: 1)
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, strStartDate) # 시작일 (YYYYMMDD, 분 데이터 요청시 : “00000000”)
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, strEndDate) # 종료일 (YYYYMMDD, 분 데이터 요청시 : “99999999”)
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 5, strRqCnt)  # 조회갯수 (1-9999)
         rqid = self.IndiTR.dynamicCall("RequestData()")
-        self.rqidD[rqid] =  "TR_CFCHART"
+        self.rqidD[rqid] =  "TR_CFNCHART"
 
 
     # 요청한 TR로 부터 데이터 수신
@@ -87,9 +105,32 @@ class Price():
 
             Strategy.dfCFutMst = self.dfCFutMst
             self.instInterface.setNearMonth()
-                
+            self.instInterface.event_loop.exit()
+        
+
         # 차트 데이터 수신
-        elif TRName == "TR_CFCHART" :
+        # elif TRName == "TR_CFCHART" :
+        #     nCnt = self.IndiTR.dynamicCall("GetMultiRowCount()")
+        #     # np.reshape(self.Historical, nCnt)
+        #     self.Historical = np.empty([nCnt], dtype=self.Historicaldt)
+        #     for i in range(0, nCnt):
+        #         self.Historical[i]['일자'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 0)
+        #         self.Historical[i]['시간'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 1)
+        #         self.Historical[i]['시가'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 2)
+        #         self.Historical[i]['고가'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 3)
+        #         self.Historical[i]['저가'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 4)
+        #         self.Historical[i]['종가'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 5)
+        #         self.Historical[i]['단위거래량'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 9)
+        #         # print(self.Historical[i])
+
+        #     if nCnt > 0:
+        #         Strategy.setHistData(self.currentProductCode, self.strRqPeriod, self.Historical)
+            
+        #     self.instInterface.event_loop.exit()
+
+        
+        # 연결선물 차트 데이터 수신
+        elif TRName == "TR_CFNCHART" :
             nCnt = self.IndiTR.dynamicCall("GetMultiRowCount()")
             # np.reshape(self.Historical, nCnt)
             self.Historical = np.empty([nCnt], dtype=self.Historicaldt)
@@ -103,7 +144,11 @@ class Price():
                 self.Historical[i]['단위거래량'] = self.IndiTR.dynamicCall("GetMultiData(int, int)", i, 9)
                 # print(self.Historical[i])
 
-            Strategy.setHistData(self.currentProductCode, self.strRqPeriod, self.Historical)
+            if nCnt > 0:
+                Strategy.setHistData(self.currentProductNCode, self.currentProductCode, self.strRqPeriod, self.Historical)
+            
+            self.instInterface.event_loop.exit()
+
 
         # 종목 기본정보 수신
         elif TRName == "MB":
@@ -112,6 +157,7 @@ class Price():
             self.PriceInfo[0]['하한가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 14)
             self.PriceInfo[0]['전일종가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 38)
             print(self.PriceInfo[0])
+
 
         # 종목 현재가 수신
         elif TRName == "MC":
@@ -126,6 +172,7 @@ class Price():
 
             # Data transfer
             # self.instStrategy.setPriceInfo(self.PriceInfo[0])
+
 
         # 종목 호가 수신
         elif TRName == "MH":

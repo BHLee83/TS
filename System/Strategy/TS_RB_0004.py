@@ -1,16 +1,15 @@
 from System.strategy import Strategy
-from System.function import Function
 
 import pandas as pd
 from datetime import datetime as dt
 
 
 
-class TS_RB_0001():
+class TS_RB_0004():
     def __init__(self, info) -> None:
         super().__init__()
-
-        # General info
+    
+    # General info
         self.npPriceInfo = None
 
         # Global setting variables
@@ -22,16 +21,14 @@ class TS_RB_0001():
         self.lstTrUnit = list(map(int, self.dfInfo['TR_UNIT'].split(',')))
         self.fWeight = self.dfInfo['WEIGHT']
 
-        self.lstProductNCode = list(map(lambda x: 'KRDRVFU'+x, self.lstUnderId))    # for SHi-indi spec. 연결선물 코드
         self.lstProductCode = Strategy.setProductCode(self.lstUnderId)
+        self.lstProductNCode = list(map(lambda x: 'KRDRVFU'+x, self.lstUnderId))    # for SHi-indi spec. 연결선물 코드
         self.lstTimeFrame_tmp = Strategy.setTimeFrame(self.lstTimeFrame)  # for SHi-indi spec.
         self.lstTimeWnd = self.lstTimeFrame_tmp[0]
         self.lstTimeIntrvl = self.lstTimeFrame_tmp[1]
 
         # Local setting variables
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
-        self.nP1 = 5    # Period value for MA calculation
-        self.nP2 = 20
 
 
     # 과거 데이터 생성
@@ -55,30 +52,31 @@ class TS_RB_0001():
     # 전략 적용
     def applyChart(self, ix):   # Strategy apply on historical chart
         df = self.lstData[ix].sort_index(ascending=False).reset_index()
-        strColName1 = 'MA' + str(self.nP1)
-        strColName2 = 'MA' + str(self.nP2)
-        df[strColName1] = df['종가'].rolling(window=self.nP1).mean()
-        df[strColName2] = df['종가'].rolling(window=self.nP2).mean()
-        # self.lstData[ix]['MP'] = 0
+        lstMonth_close = []
         for i in df.index:
             if int(i) < 1:
                 df.loc[i, 'MP'] = 0
                 continue
-            if Function.CrossUp(df[strColName1][i-1:i+1].values, df[strColName2][i-1:i+1].values):
-                df.loc[i, 'MP'] = 1
-            elif Function.CrossDown(df[strColName1][i-1:i+1].values, df[strColName2][i-1:i+1].values):
-                df.loc[i, 'MP'] = -1
             else:
+                nLast_month = df.loc[i-1, '일자'][4:6]
+                nCurrent_month = df.loc[i, '일자'][4:6]
+                if nCurrent_month != nLast_month:    # 월 변경시
+                    lstMonth_close.append(df.loc[i-1, '종가'])
+                    if len(lstMonth_close) > 1:
+                        if lstMonth_close[-1] > lstMonth_close[-2]:
+                            df.loc[i-1, 'MP'] = 1
+                        elif lstMonth_close[-1] < lstMonth_close[-2]:
+                            df.loc[i-1, 'MP'] = -1
                 df.loc[i, 'MP'] = df.loc[i-1, 'MP']
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[ix]['MP'] = df['MP']
 
 
-    # 전략 실행
+    # 전략
     def execute(self, PriceInfo):
         if PriceInfo == 0:  # 최초 실행인 경우에만
             tNow = dt.now().time()
-            if tNow.hour < 9:   # 9시 전이면
+            if tNow.hour < 19:   # 9시 전이면
                 ix = 0  # 대상 상품의 인덱스                
                 self.lstData[ix] = self.getHistData(ix)
                 if self.lstData[ix].empty:
@@ -91,5 +89,3 @@ class TS_RB_0001():
                                 Strategy.setOrder(self, self.lstProductCode[ix], 'B', amt*self.lstTrUnit[ix]*self.fWeight, 0) # 상품코드, 매수/매도, 계약수, 가격
                         elif self.lstData[ix]['MP'][1] == -1:
                                 Strategy.setOrder(self, self.lstProductCode[ix], 'S', amt*self.lstTrUnit[ix]*self.fWeight, 0)
-
-            Strategy.setOrder(self, self.lstProductCode[0], 'S', self.lstTrUnit[0], 0) # test

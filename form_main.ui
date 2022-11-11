@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1100</width>
-    <height>824</height>
+    <width>801</width>
+    <height>752</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -238,7 +238,7 @@
       <x>10</x>
       <y>60</y>
       <width>331</width>
-      <height>481</height>
+      <height>231</height>
      </rect>
     </property>
     <property name="horizontalScrollBarPolicy">
@@ -284,7 +284,7 @@
     </column>
     <column>
      <property name="text">
-      <string>포지션</string>
+      <string>가중치</string>
      </property>
      <property name="textAlignment">
       <set>AlignCenter</set>
@@ -318,7 +318,7 @@
     </property>
     <column>
      <property name="text">
-      <string>주문/체결</string>
+      <string>구분</string>
      </property>
     </column>
     <column>
@@ -328,7 +328,7 @@
     </column>
     <column>
      <property name="text">
-      <string>전략명</string>
+      <string>전략명(주문번호)</string>
      </property>
     </column>
     <column>
@@ -362,7 +362,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>미결제약정</string>
+     <string>잔고내역</string>
     </property>
    </widget>
    <widget class="QTableWidget" name="twBalanceInfo">
@@ -370,16 +370,21 @@
      <rect>
       <x>10</x>
       <y>570</y>
-      <width>441</width>
+      <width>781</width>
       <height>141</height>
      </rect>
     </property>
     <property name="columnCount">
-     <number>8</number>
+     <number>10</number>
     </property>
     <column>
      <property name="text">
       <string>종목코드</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>종목명</string>
      </property>
     </column>
     <column>
@@ -389,32 +394,37 @@
     </column>
     <column>
      <property name="text">
-      <string>수량</string>
+      <string>당일잔고</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>장부단가</string>
+      <string>청산가능수량</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>장부금액</string>
+      <string>평균단가</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>정산단가</string>
-     </property>
-    </column>
-    <column>
-     <property name="text">
-      <string>정산금액</string>
+      <string>미체결수량</string>
      </property>
     </column>
     <column>
      <property name="text">
       <string>평가손익</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>수수료</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>세금</string>
      </property>
     </column>
    </widget>
@@ -428,7 +438,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>체결/미체결</string>
+     <string>체결내역</string>
     </property>
    </widget>
    <widget class="QTableWidget" name="twSettleInfo">
@@ -494,13 +504,77 @@
      </property>
     </column>
    </widget>
+   <widget class="QTableWidget" name="twPositionInfo">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>320</y>
+      <width>331</width>
+      <height>221</height>
+     </rect>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="rowCount">
+     <number>0</number>
+    </property>
+    <property name="columnCount">
+     <number>4</number>
+    </property>
+    <column>
+     <property name="text">
+      <string>전략명</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignCenter</set>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>자산명</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignCenter</set>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>자산구분</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignCenter</set>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>포지션</string>
+     </property>
+     <property name="textAlignment">
+      <set>AlignCenter</set>
+     </property>
+    </column>
+   </widget>
+   <widget class="QLabel" name="label_Position">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>300</y>
+      <width>111</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>전략별 포지션(T-1)</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1100</width>
+     <width>801</width>
      <height>21</height>
     </rect>
    </property>
