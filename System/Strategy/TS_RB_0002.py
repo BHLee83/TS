@@ -5,7 +5,7 @@ from datetime import datetime as dt
 
 
 
-class TS_RB_0003():
+class TS_RB_0002():
     def __init__(self, info) -> None:
         super().__init__()
     
@@ -61,13 +61,12 @@ class TS_RB_0003():
                 nLast_month = df.loc[i-1, '일자'][4:6]
                 nCurrent_month = df.loc[i, '일자'][4:6]
                 if nCurrent_month != nLast_month:    # 월 변경시
-                    if any(nLast_month==3, nLast_month==6, nLast_month==9, nLast_month==12):    # 분기마다
-                        lstMonth_close.append(df.loc[i-1, '종가'])
-                        if len(lstMonth_close) > 1:
-                            if lstMonth_close[-1] > lstMonth_close[-2]:
-                                df.loc[i-1, 'MP'] = 1
-                            elif lstMonth_close[-1] < lstMonth_close[-2]:
-                                df.loc[i-1, 'MP'] = -1
+                    lstMonth_close.append(df.loc[i-1, '종가'])
+                    if len(lstMonth_close) > 1:
+                        if lstMonth_close[-1] > lstMonth_close[-2]:
+                            df.loc[i-1, 'MP'] = 1
+                        elif lstMonth_close[-1] < lstMonth_close[-2]:
+                            df.loc[i-1, 'MP'] = -1
                 df.loc[i, 'MP'] = df.loc[i-1, 'MP']
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[ix]['MP'] = df['MP']
