@@ -48,7 +48,7 @@ class Interface():
         self.objOrder = Order(self) # 주문
         self.objBalance = Balance(self) # 잔고 조회
         if self.userEnv.userLogin():    # 로그인
-            time.sleep(6)   # 로그인 완료여도 후속 처리 시간이 걸려 데이터 조회불가 시간 발생 (단말 dependency. 테스트하여 시간 충분히 할당)
+            time.sleep(7)   # 로그인 완료여도 후속 처리 시간이 걸려 데이터 조회불가 시간 발생 (단말 dependency. 테스트하여 시간 충분히 할당)
             
             self.userEnv.setAccount()   # 로그인 처리 시간이 걸림
             self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
