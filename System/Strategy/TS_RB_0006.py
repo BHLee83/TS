@@ -1,7 +1,6 @@
-from System.strategy import Strategy
-
 import pandas as pd
-from datetime import datetime as dt
+
+from System.strategy import Strategy
 
 
 
@@ -26,6 +25,10 @@ class TS_RB_0006():
         self.lstTimeFrame_tmp = Strategy.setTimeFrame(self.lstTimeFrame)  # for SHi-indi spec.
         self.lstTimeWnd = self.lstTimeFrame_tmp[0]
         self.lstTimeIntrvl = self.lstTimeFrame_tmp[1]
+        self.ix = 0 # 대상 상품의 인덱스
+        self.nPosition = 0
+        self.amt_entry = 0
+        self.amt_exit = 0
 
         # Local setting variables
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
@@ -41,8 +44,8 @@ class TS_RB_0006():
 
 
     # 과거 데이터 로드
-    def getHistData(self, ix):
-        data = Strategy.getHistData(self.lstProductCode[ix], self.lstTimeFrame[ix])
+    def getHistData(self):
+        data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
         if data == False:
             return pd.DataFrame(None)            
         
@@ -51,8 +54,8 @@ class TS_RB_0006():
 
 
     # 전략 적용
-    def applyChart(self, ix):   # Strategy apply on historical chart
-        df = self.lstData[ix].sort_index(ascending=False).reset_index()
+    def applyChart(self):   # Strategy apply on historical chart
+        df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         df['dt'] = pd.to_datetime(df['일자'])
         df['woy'] = list(map(lambda x: x.weekofyear, df['dt']))
         df['MP'] = 0
@@ -80,29 +83,35 @@ class TS_RB_0006():
                 if df['저가'][i] <= df['chLower'][i]:   # 채널 하단 돌파 매도
                     df.loc[i, 'MP'] = -1
         df = df.sort_index(ascending=False).reset_index()
-        self.lstData[ix]['MP'] = df['MP']
-        self.lstData[ix]['chUpper'] = df['chUpper']
-        self.lstData[ix]['chLower'] = df['chLower']
+        self.lstData[self.ix]['MP'] = df['MP']
+        self.lstData[self.ix]['chUpper'] = df['chUpper']
+        self.lstData[self.ix]['chLower'] = df['chLower']
 
 
     # 전략
     def execute(self, PriceInfo):
-        ix = 0  # 대상 상품의 인덱스                
         if PriceInfo == 0:  # 최초 실행인 경우에만
-            self.lstData[ix] = self.getHistData(ix)
-            if self.lstData[ix].empty:
+            self.lstData[self.ix] = self.getHistData()
+            if self.lstData[self.ix].empty:
                 return False
             else:
-                self.applyChart(ix)
+                self.applyChart()
+                try:
+                        self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
+                                            and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
+                                            and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
+                except:
+                    self.nPosition = 0
+                self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
         else:
+            df = self.lstData[self.ix]
             if self.npPriceInfo != None:
-                amt = abs(self.lstData[ix]['MP'][0]) * self.lstTrUnit[ix] * self.fWeight * 2
-                if self.lstData[ix]['MP'][0] < 0:
-                    if (self.npPriceInfo['현재가'] < self.lstData[ix]['chUpper'][0]) and (PriceInfo['현재가'] >= self.lstData[ix]['chUpper'][0]): # 채널 상단 터치시
-                        Strategy.setOrder(self, self.lstProductCode[ix], 'B', amt, PriceInfo['현재가'])   # 매수
-                        self.lstData[ix]['MP'][0] = 1
-                if self.lstData[ix]['MP'][0] > 0:
-                    if (self.npPriceInfo['현재가'] > self.lstData[ix]['chLower'][0]) and (PriceInfo['현재가'] <= self.lstData[ix]['chLower'][0]): # 채널 하단 터치시
-                        Strategy.setOrder(self, self.lstProductCode[ix], 'S', amt, PriceInfo['현재가'])   # 매도
-                        self.lstData[ix]['MP'][0] = -1
+                if df['MP'][0] < 0:
+                    if (self.npPriceInfo['현재가'] < df['chUpper'][0]) and (PriceInfo['현재가'] >= df['chUpper'][0]): # 채널 상단 터치시
+                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
+                        df.loc[0, 'MP'] = 1
+                if df['MP'][0] > 0:
+                    if (self.npPriceInfo['현재가'] > df['chLower'][0]) and (PriceInfo['현재가'] <= df['chLower'][0]): # 채널 하단 터치시
+                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
+                        df.loc[0, 'MP'] = -1
             self.npPriceInfo = PriceInfo.copy()

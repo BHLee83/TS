@@ -26,6 +26,9 @@ class TS_RB_0002():
         self.lstTimeFrame_tmp = Strategy.setTimeFrame(self.lstTimeFrame)  # for SHi-indi spec.
         self.lstTimeWnd = self.lstTimeFrame_tmp[0]
         self.lstTimeIntrvl = self.lstTimeFrame_tmp[1]
+        self.ix = 0 # 대상 상품의 인덱스
+        self.nPosition = 0
+        self.amt = 0
 
         # Local setting variables
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
@@ -40,8 +43,8 @@ class TS_RB_0002():
 
 
     # 과거 데이터 로드
-    def getHistData(self, ix):
-        data = Strategy.getHistData(self.lstProductCode[ix], self.lstTimeFrame[ix])
+    def getHistData(self):
+        data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
         if data == False:
             return pd.DataFrame(None)            
         
@@ -50,14 +53,13 @@ class TS_RB_0002():
 
 
     # 전략 적용
-    def applyChart(self, ix):   # Strategy apply on historical chart
-        df = self.lstData[ix].sort_index(ascending=False).reset_index()
+    def applyChart(self):   # Strategy apply on historical chart
+        df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         lstMonth_close = []
-        for i in df.index:
-            if int(i) < 1:
-                df.loc[i, 'MP'] = 0
-                continue
-            else:
+        df['MP'] = 0
+        for i in df.index-1:
+            if i > 0:
+                df.loc[i, 'MP'] = df['MP'][i-1]
                 nLast_month = df.loc[i-1, '일자'][4:6]
                 nCurrent_month = df.loc[i, '일자'][4:6]
                 if nCurrent_month != nLast_month:    # 월 변경시
@@ -67,25 +69,32 @@ class TS_RB_0002():
                             df.loc[i-1, 'MP'] = 1
                         elif lstMonth_close[-1] < lstMonth_close[-2]:
                             df.loc[i-1, 'MP'] = -1
-                df.loc[i, 'MP'] = df.loc[i-1, 'MP']
         df = df.sort_index(ascending=False).reset_index()
-        self.lstData[ix]['MP'] = df['MP']
+        self.lstData[self.ix]['MP'] = df['MP']
 
 
     # 전략
-    def execute(self, PriceInfo):
+    def execute(self, PriceInfo):    
         if PriceInfo == 0:  # 최초 실행인 경우에만
             tNow = dt.now().time()
             if tNow.hour < 9:   # 9시 전이면
-                ix = 0  # 대상 상품의 인덱스                
-                self.lstData[ix] = self.getHistData(ix)
-                if self.lstData[ix].empty:
+                self.lstData[self.ix] = self.getHistData()
+                if self.lstData[self.ix].empty:
                     return False
                 else:
-                    self.applyChart(ix)
-                    if self.lstData[ix]['MP'][1] != self.lstData[ix]['MP'][2]:  # 포지션 변동시
-                        amt = abs(self.lstData[ix]['MP'][1] - self.lstData[ix]['MP'][2])    # 변동된 수량만큼
-                        if self.lstData[ix]['MP'][1] == 1:
-                                Strategy.setOrder(self, self.lstProductCode[ix], 'B', amt*self.lstTrUnit[ix]*self.fWeight, 0) # 상품코드, 매수/매도, 계약수, 가격
-                        elif self.lstData[ix]['MP'][1] == -1:
-                                Strategy.setOrder(self, self.lstProductCode[ix], 'S', amt*self.lstTrUnit[ix]*self.fWeight, 0)
+                    self.applyChart()
+                    try:
+                        self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
+                                            and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
+                                            and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
+                    except:
+                        self.nPosition = 0
+                    self.amt = abs(self.nPosition) + self.lstTrUnit[self.ix]*self.fWeight
+                    df = self.lstData[self.ix]
+                    if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
+                        if df['MP'][1] == 1:
+                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
+                            df['MP'][0] = 1
+                        elif df['MP'][1] == -1:
+                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt, 0)
+                            df['MP'][0] = -1

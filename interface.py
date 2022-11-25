@@ -2,6 +2,7 @@ import importlib
 import pandas as pd
 import datetime as dt
 import time
+from datetime import timedelta
 
 # from PyQt5.QAxContainer import *
 from PyQt5.QtWidgets import *
@@ -144,8 +145,11 @@ class Interface():
         for i in self.lstObj_Strategy:  # 전략별 과거 데이터 세팅
             i.createHistData(self)
 
+        start = time.process_time()
         for i in self.lstObj_Strategy:  # 전략 실행 (최초 1회)
             i.execute(0)
+        end = time.process_time()
+        print("Time elapsed: ", timedelta(seconds=end-start))
 
         self.orderStrategy()    # 접수된 주문 실행
 
@@ -161,7 +165,8 @@ class Interface():
         Strategy.chkPrice(self.price, PriceInfo)  # 분봉 완성 check
         for i in self.lstObj_Strategy:
             i.execute(PriceInfo) # 3. 전략 실행
-
+        
+        
         self.orderStrategy(PriceInfo)    # 4. 접수된 주문 실행
 
 

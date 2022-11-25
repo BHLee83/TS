@@ -4,7 +4,7 @@ import pandas as pd
 
 
 
-class TS_RB_0004():
+class TS_RB_0005():
     def __init__(self, info) -> None:
         super().__init__()
     
@@ -65,27 +65,13 @@ class TS_RB_0004():
     def applyChart(self):   # Strategy apply on historical chart
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         df['MP'] = 0
-        df['SL'] = 0.0
-        df['EL'] = 0.0
-        df['ES'] = 0.0
         for i in df.index-1:
             if i > 0:
                 self.nTrend = 0
                 self.boolNewHigh = False
                 self.boolNewLow = False
                 df.loc[i, 'MP'] = df['MP'][i-1]
-                df.loc[i, 'SL'] = df['SL'][i-1]
-                df.loc[i, 'EL'] = df['EL'][i-1]
-                df.loc[i, 'ES'] = df['ES'][i-1]
                 
-                if df['MP'][i] == 0:    # Entry
-                    if df['고가'][i] >= df['고가'][i-1]:
-                        df.loc[i, 'MP'] = 1
-                        df.loc[i, 'SL'] = min(df['저가'][i-1:i+1].values)   # SL(EL) price
-                    if df['저가'][i] <= df['저가'][i-1]:
-                        df.loc[i, 'MP'] = -1
-                        df.loc[i, 'SL'] = max(df['고가'][i-1:i+1].values)   # SL(ES) price
-
                 if i >= self.nSwingP - 1:
                     if df['고가'][i] > max(df['고가'][i-self.nSwingP+1:i].values):  # 신고가
                         self.boolNewHigh = True
@@ -128,27 +114,13 @@ class TS_RB_0004():
                     self.dLowStop = self.lstLowPts[-2]
                 else:
                     self.dLowStop = self.lstLowPts[-1]
-                if df['MP'][i] == 1 and df['저가'][i] > self.dLowStop:
-                    df.loc[i, 'EL'] = self.dLowStop
-                if df['MP'][i] == -1 and df['고가'][i] < self.dHighStop:
-                    df.loc[i, 'ES'] = self.dHighStop
-                if df['MP'][i] == 1 and df['저가'][i] <= df['EL'][i]:
-                    df.loc[i, 'MP'] = 0
-                if df['MP'][i] == -1 and df['고가'][i] >= df['ES'][i]:
-                    df.loc[i, 'MP'] = 0
-
-                if df['MP'][i] == 1:    # Stop loss
-                    if df['저가'][i] <= df['SL'][i]:    # Exit long
-                        df.loc[i, 'MP'] = 0
-                if df['MP'][i] == -1:
-                    if df['고가'][i] >= df['SL'][i]:    # Exit short
-                            df.loc[i, 'MP'] = 0
+                if df['MP'][i] != 1 and df['고가'][i] >= self.dHighStop:
+                    df.loc[i, 'MP'] = 1
+                if df['MP'][i] != -1 and df['저가'][i] <= self.dLowStop:
+                    df.loc[i, 'MP'] = -1
 
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[self.ix]['MP'] = df['MP']
-        self.lstData[self.ix]['SL'] = df['SL']
-        self.lstData[self.ix]['EL'] = df['EL']
-        self.lstData[self.ix]['ES'] = df['ES']
 
 
     # 전략
@@ -172,22 +144,13 @@ class TS_RB_0004():
             if self.npPriceInfo == None:
                 if df['MP'][1] == 0:    # Entry
                     if PriceInfo['현재가'] == PriceInfo['시가']:
-                        if PriceInfo['현재가'] >= df['고가'][1]:
+                        if PriceInfo['현재가'] >= self.dHighStop:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 시초가 매수
                             df.loc[0, 'MP'] = 1
-                        if PriceInfo['현재가'] <= df['저가'][1]:
+                        if PriceInfo['현재가'] <= self.dLowStop:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 시초가 매도
                             df.loc[0, 'MP'] = -1
             else:
-                if (df['MP'][1] == 0) and (df['MP'][0] == 0):    # Entry
-                    if (self.npPriceInfo['현재가'] < df['고가'][1]) and (PriceInfo['현재가'] >= df['고가'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
-                        df.loc[0, 'MP'] = 1
-                    if (self.npPriceInfo['현재가'] > df['저가'][1]) and (PriceInfo['현재가'] <= df['저가'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
-                        df.loc[0, 'MP'] = 1
-
-                # Trail stop
                 self.boolNewHigh = False
                 self.boolNewLow = False
                 self.nTrend = 0
@@ -234,25 +197,13 @@ class TS_RB_0004():
                 else:
                     self.dLowStop = self.lstLowPts[-1]
 
-                if (df['MP'][1] == 1) and (PriceInfo['저가'] > self.dLowStop):
-                    df.loc[0, 'EL'] = self.dLowStop
-                if (df['MP'][1] == -1) and (PriceInfo['고가'] < self.dHighStop):
-                    df.loc[0, 'ES'] = self.dHighStop
-                if (df['MP'][1] == 1) and (self.npPriceInfo['현재가'] > df['EL'][0]) and (PriceInfo['현재가'] <= df['EL'][0]):
-                    Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])   # 매수 청산
-                    df.loc[0, 'MP'] = 0
-                if (df['MP'][1] == -1) and (self.npPriceInfo['현재가'] < df['ES'][0]) and (PriceInfo['현재가'] >= df['ES'][0]):
-                    Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])   # 매도 청산
-                    df.loc[0, 'MP'] = 0
-
-                # Stop loss
-                if df['MP'][1] == 1:
-                    if (self.npPriceInfo['현재가'] > df['SL'][1]) and (PriceInfo['현재가'] <= df['SL'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])   # 매수 청산
-                        df.loc[0, 'MP'] = 0
-                if df['MP'][1] == -1:
-                    if (self.npPriceInfo['현재가'] < df['SL'][1]) and (PriceInfo['현재가'] >= df['SL'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])   # 매도 청산
-                        df.loc[0, 'MP'] = 0
+                if (df['MP'][1] != 1) and (df['MP'][0] != 1):
+                    if (self.npPriceInfo['현재가'] < self.dHighStop) and (self.npPriceInfo['현재가'] >= self.dHighStop):
+                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
+                        df.loc[0, 'MP'] = 1
+                if (df['MP'][1] != -1) and (df['MP'][0] != -1):
+                    if (self.npPriceInfo['현재가'] > self.dLowStop) and (self.npPriceInfo['현재가'] <= self.dLowStop):
+                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
+                        df.loc[0, 'MP'] = -1
 
             self.npPriceInfo = PriceInfo.copy()

@@ -80,7 +80,7 @@ class Strategy(metaclass=SingletonMeta):
     # Strategy settings info. from DB
     def setStrategyInfo(productCode):
         underyling_id = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==productCode].drop_duplicates().values[0]
-        strQuery = f"SELECT * FROM strategy_info WHERE underlying_id LIKE '%{underyling_id}%'"
+        strQuery = f"SELECT * FROM strategy_info WHERE underlying_id LIKE '%{underyling_id}%' ORDER BY name"
         Strategy.dfStrategyInfo = Strategy.instDB.query_to_df(strQuery, 100)
         if len(Strategy.dfStrategyInfo) != 0:
             Strategy.dfStrategyInfo['TR_UNIT'] = Strategy.dfStrategyInfo['TR_UNIT'].astype(str)
