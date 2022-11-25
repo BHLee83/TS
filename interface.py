@@ -7,6 +7,7 @@ from datetime import timedelta
 # from PyQt5.QAxContainer import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QEventLoop
+from PyQt5.QtCore import Qt
 
 from SHi_indi.account import Account
 from SHi_indi.price import Price
@@ -41,6 +42,7 @@ class Interface():
         self.strAcntCode = ''
         self.strProductCode = ''
         self.dfPositionT_1 = pd.DataFrame(None)
+        self.lstChkBox = []
 
         # Init. proc.
         self.userEnv = Account(self)
@@ -90,16 +92,29 @@ class Interface():
 
     def initStrategyInfo(self):
         self.wndIndi.twStrategyInfo.setRowCount(0)  # 기존 내용 삭제
+        self.lstChkBox = []
         if self.wndIndi.cbProductCode.currentText() == '':
             self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
             self.event_loop.exec_()
         self.strProductCode = self.wndIndi.cbProductCode.currentText()
         Strategy.setStrategyInfo(self.strProductCode)
         if len(Strategy.dfStrategyInfo) != 0:
+            for i in Strategy.dfStrategyInfo.index:
+                self.lstChkBox.append(QCheckBox())
+                self.lstChkBox[i].setCheckState(int(Strategy.dfStrategyInfo['USE'][i] * 2)) # 2: Checked, 0: Not checked
+                self.lstChkBox[i].toggled.connect(self.chkbox_toggled)
             self.setTwStrategyInfoUI()  # 전략 세팅값 확인(UI)
             self.initPosition()
 
-        
+
+    def chkbox_toggled(self):
+        for i, v in enumerate(self.lstChkBox):
+            if v.isChecked():
+                Strategy.dfStrategyInfo.loc[i, 'USE'] = '1'
+            else:
+                Strategy.dfStrategyInfo.loc[i, 'USE'] = '0'
+
+
     def setNearMonth(self):
         df = Strategy.dfCFutMst.drop_duplicates(subset=['단축코드'])
         for i in df['단축코드']:
@@ -345,13 +360,8 @@ class Interface():
         for i in Strategy.dfStrategyInfo.index:
             nRowCnt = self.wndIndi.twStrategyInfo.rowCount()
             self.wndIndi.twStrategyInfo.insertRow(nRowCnt)
-
-            chBox = QCheckBox()
-            chBox.setCheckState(int(Strategy.dfStrategyInfo['USE'][i] * 2)) # 2: Checked, 0: Not Checked
-            chBox.setEnabled(False) # 일단 비활성화
-
             self.wndIndi.twStrategyInfo.setItem(nRowCnt, 0, QTableWidgetItem(Strategy.dfStrategyInfo['NAME'][i]))
-            self.wndIndi.twStrategyInfo.setCellWidget(nRowCnt, 1, chBox)
+            self.wndIndi.twStrategyInfo.setCellWidget(nRowCnt, 1, self.lstChkBox[i])
             self.wndIndi.twStrategyInfo.setItem(nRowCnt, 2, QTableWidgetItem(Strategy.dfStrategyInfo['TIMEFRAME'][i]))
             self.wndIndi.twStrategyInfo.setItem(nRowCnt, 3, QTableWidgetItem(str(Strategy.dfStrategyInfo['TR_UNIT'][i])))
             self.wndIndi.twStrategyInfo.setItem(nRowCnt, 4, QTableWidgetItem(str(Strategy.dfStrategyInfo['WEIGHT'][i]*100)))
