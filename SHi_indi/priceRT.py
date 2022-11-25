@@ -98,10 +98,13 @@ class PriceRT():
 
         # 종목 호가 수신
         elif TRName == "MH":
-            self.PriceInfo[0]['매도1호가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 3)
-            self.PriceInfo[0]['매수1호가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 4)
-            self.PriceInfo[0]['매도1호가수량'] = self.IndiTR.dynamicCall("GetSingleData(int)", 5)
-            self.PriceInfo[0]['매수1호가수량'] = self.IndiTR.dynamicCall("GetSingleData(int)", 6)
+            try:
+                self.PriceInfo[0]['매도1호가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 3)
+                self.PriceInfo[0]['매수1호가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 4)
+                self.PriceInfo[0]['매도1호가수량'] = self.IndiTR.dynamicCall("GetSingleData(int)", 5)
+                self.PriceInfo[0]['매수1호가수량'] = self.IndiTR.dynamicCall("GetSingleData(int)", 6)
+            except:
+                self.instInterface.setSysMsgOnStatusBar("현재 호가 데이터가 수신되지 않습니다", __file__)
             # 실시간 등록
             ret = self.IndiReal.dynamicCall("RequestRTReg(QString, QString)", "MH", self.currentCode)
 
