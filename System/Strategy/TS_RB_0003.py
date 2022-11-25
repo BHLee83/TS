@@ -95,7 +95,7 @@ class TS_RB_0003():
                     if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
                         if df['MP'][1] == 1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
-                            df['MP'][0] = 1
+                            df.loc[0, 'MP'] = 1
                         elif df['MP'][1] == -1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt, 0)
-                            df['MP'][0] = -1
+                            df.loc[0, 'MP'] = -1

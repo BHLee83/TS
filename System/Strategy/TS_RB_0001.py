@@ -90,12 +90,12 @@ class TS_RB_0001():
                                             and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
                     except:
                         self.nPosition = 0
-                    self.amt = abs(self.nPosition) + self.lstTrUnit[self.ix]*self.fWeight
+                    self.amt = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
                     df = self.lstData[self.ix]
                     if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
-                        if df[1] == 1:
+                        if df['MP'][1] == 1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
-                            df[0] = 1
+                            df.loc[0, 'MP'] = 1
                         if df[1] == -1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt, 0)
-                            df['MP'][0] = -1
+                            df.loc[0, 'MP'] = -1
