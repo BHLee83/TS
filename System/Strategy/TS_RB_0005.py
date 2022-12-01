@@ -54,8 +54,9 @@ class TS_RB_0005():
     # 과거 데이터 로드
     def getHistData(self):
         data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
-        if data == False:
-            return pd.DataFrame(None)            
+        if type(data) == bool:
+            if data == False:
+                return pd.DataFrame(None)
         
         data = Strategy.convertNPtoDF(data)
         return data
@@ -65,7 +66,7 @@ class TS_RB_0005():
     def applyChart(self):   # Strategy apply on historical chart
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         df['MP'] = 0
-        for i in df.index-1:
+        for i in df.index:
             if i > 0:
                 self.nTrend = 0
                 self.boolNewHigh = False
@@ -125,7 +126,7 @@ class TS_RB_0005():
 
     # 전략
     def execute(self, PriceInfo):
-        if PriceInfo == 0:  # 최초 실행인 경우에만
+        if type(PriceInfo) == int:  # 최초 실행인 경우에만
             self.lstData[self.ix] = self.getHistData()
             if self.lstData[self.ix].empty:
                 return False

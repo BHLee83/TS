@@ -7,7 +7,6 @@ from datetime import timedelta
 # from PyQt5.QAxContainer import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QEventLoop
-from PyQt5.QtCore import Qt
 
 from SHi_indi.account import Account
 from SHi_indi.price import Price
@@ -178,8 +177,12 @@ class Interface():
     # 3. 전략 실행 (실시간)
     def executeStrategy(self, PriceInfo):
         Strategy.chkPrice(self.price, PriceInfo)  # 분봉 완성 check
+
+        start = time.process_time()
         for i in self.lstObj_Strategy:
             i.execute(PriceInfo) # 3. 전략 실행
+        end = time.process_time()
+        print("Time elapsed: ", timedelta(seconds=end-start))
         
         
         self.orderStrategy(PriceInfo)    # 4. 접수된 주문 실행

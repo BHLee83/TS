@@ -220,14 +220,17 @@ class Strategy(metaclass=SingletonMeta):
                 if (i['PRODUCT_CODE'] == productCode) and (i['PERIOD'] == period):
                     i['VALUES'] = np.concatenate((histData.copy(), i['VALUES']))
 
-        elif Strategy.getHistData(productCode, period) == False:
-            dictData = {}
-            dictData['PRODUCT_N_CODE'] = productNCode
-            dictData['PRODUCT_CODE'] = productCode
-            dictData['PERIOD'] = period
-            dictData['VALUES'] = histData.copy()
-            Strategy.lstMktData.append(dictData)
-
+        else:
+            ret = Strategy.getHistData(productCode, period)
+            if type(ret) == bool:
+                if ret == False:
+                    dictData = {}
+                    dictData['PRODUCT_N_CODE'] = productNCode
+                    dictData['PRODUCT_CODE'] = productCode
+                    dictData['PERIOD'] = period
+                    dictData['VALUES'] = histData.copy()
+                    Strategy.lstMktData.append(dictData)
+            
 
     def getHistData(productCode, period):
         for i in Strategy.lstMktData:

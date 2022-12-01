@@ -45,8 +45,9 @@ class TS_RB_0003():
     # 과거 데이터 로드
     def getHistData(self):
         data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
-        if data == False:
-            return pd.DataFrame(None)            
+        if type(data) == bool:
+            if data == False:
+                return pd.DataFrame(None)
         
         data = Strategy.convertNPtoDF(data)
         return data
@@ -57,7 +58,7 @@ class TS_RB_0003():
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         lstMonth_close = []
         df['MP'] = 0
-        for i in df.index-1:
+        for i in df.index:
             if i > 0:
                 df.loc[i, 'MP'] = df['MP'][i-1]
                 nLast_month = df.loc[i-1, '일자'][4:6]
@@ -76,7 +77,7 @@ class TS_RB_0003():
 
     # 전략
     def execute(self, PriceInfo):
-        if PriceInfo == 0:  # 최초 실행인 경우에만
+        if type(PriceInfo) == int:  # 최초 실행인 경우에만
             tNow = dt.now().time()
             if tNow.hour < 9:   # 9시 전이면
                 self.lstData[self.ix] = self.getHistData()

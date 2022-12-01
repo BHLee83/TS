@@ -51,8 +51,9 @@ class TS_RB_0007():
     # 과거 데이터 로드
     def getHistData(self):
         data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
-        if data == False:
-            return pd.DataFrame(None)            
+        if type(data) == bool:
+            if data == False:
+                return pd.DataFrame(None)
         
         data = Strategy.convertNPtoDF(data)
         return data
@@ -153,7 +154,7 @@ class TS_RB_0007():
 
     # 전략
     def execute(self, PriceInfo):
-        if PriceInfo == 0:  # 최초 실행인 경우에만
+        if type(PriceInfo) == int:  # 최초 실행인 경우에만
             self.lstData[self.ix] = self.getHistData()
             if self.lstData[self.ix].empty:
                 return False

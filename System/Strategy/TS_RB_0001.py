@@ -48,8 +48,9 @@ class TS_RB_0001():
     # 과거 데이터 로드
     def getHistData(self):
         data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
-        if data == False:
-            return pd.DataFrame(None)            
+        if type(data) == bool:
+            if data == False:
+                return pd.DataFrame(None)
         
         data = Strategy.convertNPtoDF(data)
         return data
@@ -63,7 +64,7 @@ class TS_RB_0001():
         df[strColName1] = df['종가'].rolling(window=self.nP1).mean()
         df[strColName2] = df['종가'].rolling(window=self.nP2).mean()
         df['MP'] = 0
-        for i in df.index-1:
+        for i in df.index:
             if i > 0:
                 df.loc[i, 'MP'] = df['MP'][i-1]
                 if Function.CrossUp(df[strColName1][i-1:i+1].values, df[strColName2][i-1:i+1].values):
@@ -76,7 +77,7 @@ class TS_RB_0001():
 
     # 전략 실행
     def execute(self, PriceInfo):
-        if PriceInfo == 0:  # 최초 실행인 경우에만
+        if type(PriceInfo) == int:  # 최초 실행인 경우에만
             tNow = dt.now().time()
             if tNow.hour < 9:   # 9시 전이면
                 self.lstData[self.ix] = self.getHistData()
@@ -96,6 +97,6 @@ class TS_RB_0001():
                         if df['MP'][1] == 1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
                             df.loc[0, 'MP'] = 1
-                        if df[1] == -1:
+                        if df['MP'][1] == -1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt, 0)
                             df.loc[0, 'MP'] = -1
