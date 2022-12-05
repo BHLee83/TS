@@ -255,12 +255,12 @@
       <string>전략명</string>
      </property>
      <property name="textAlignment">
-      <set>AlignCenter</set>
+      <set>AlignLeading|AlignVCenter</set>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>실행여부</string>
+      <string>실행</string>
      </property>
      <property name="textAlignment">
       <set>AlignCenter</set>
@@ -279,7 +279,7 @@
       <string>기본주문단위</string>
      </property>
      <property name="textAlignment">
-      <set>AlignCenter</set>
+      <set>AlignTrailing|AlignVCenter</set>
      </property>
     </column>
     <column>
@@ -287,7 +287,7 @@
       <string>가중치</string>
      </property>
      <property name="textAlignment">
-      <set>AlignCenter</set>
+      <set>AlignTrailing|AlignVCenter</set>
      </property>
     </column>
    </widget>
