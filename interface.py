@@ -25,6 +25,7 @@ class Interface():
         
         # Global settings
         self.wndIndi = IndiWindow
+        self.boolSysReady = False
         self.event_loop = QEventLoop()
         self.strStrategyPath = 'System.Strategy'
         self.strStrategyClass = 'System'
@@ -50,9 +51,10 @@ class Interface():
         self.objOrder = Order(self) # 주문
         self.objBalance = Balance(self) # 잔고 조회
         if self.userEnv.userLogin():    # 로그인
-            time.sleep(8)   # 로그인 완료여도 후속 처리 시간이 걸려 데이터 조회불가 시간 발생 (단말 dependency. 테스트하여 시간 충분히 할당)
+            if not self.boolSysReady:
+                self.event_loop.exec_()
             
-            self.userEnv.setAccount()   # 로그인 처리 시간이 걸림
+            self.userEnv.setAccount()
             self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
             
             Strategy.__init__()
@@ -422,6 +424,8 @@ class Interface():
             MsgStr = "시스템이 종료됨(" + moduleName +")"
         elif MsgID == 11:
             MsgStr = "시스템이 시작됨(" + moduleName +")"
+            self.boolSysReady = True
+            self.event_loop.exit()
         else:
             MsgStr = "System Message Received in module '" + moduleName + "' = " + str(MsgID)
         # print(MsgStr)
