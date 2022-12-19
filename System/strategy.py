@@ -35,7 +35,7 @@ class Strategy(metaclass=SingletonMeta):
     lstMktData = []
     strStartDate = "00000000"
     strEndDate = "99999999"
-    strRqCnt = "400"
+    strRqCnt = "420"
     
     lstOrderInfo = []
     lstOrderInfo_Net = []
@@ -241,11 +241,11 @@ class Strategy(metaclass=SingletonMeta):
 
     
     def chkPrice(price, PriceInfo):
-        for i in Strategy.lstPriceInfo:
-            if i['단축코드'] == PriceInfo['단축코드']:
-                if i['체결시간'][2:4] != PriceInfo['체결시간'][2:4]:    # hour or min. 이 바뀌면
+        for i, v in enumerate(Strategy.lstPriceInfo):
+            if v['단축코드'] == PriceInfo['단축코드']:
+                if str(v['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]:    # hour or min. 이 바뀌면
                     Strategy.addToHistData(price, PriceInfo)
-                i = PriceInfo
+                Strategy.lstPriceInfo[i] = PriceInfo.copy()
                 return
 
         Strategy.lstPriceInfo.append(PriceInfo.copy())
