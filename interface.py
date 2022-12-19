@@ -81,6 +81,8 @@ class Interface():
         else:
             self.dtT_1 = df['BASE_DATE'][0].date()
         self.strT_1 = self.dtT_1.strftime('%Y%m%d')
+        Strategy.strToday = self.strToday
+        Strategy.strT_1 = self.strT_1
 
 
     def initAcntInfo(self):

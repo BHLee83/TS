@@ -46,11 +46,12 @@ class TS_RB_0014():
         self.stopEndOfDay = True
 
 
-    # 과거 데이터 생성
+    # 과거 데이터 생성 (인디로 수신시 일봉은 연결선물, 분봉은 근월물 코드로 생성)
     def createHistData(self, instInterface):
-        for i, v in enumerate(self.lstProductNCode):
+        # for i, v in enumerate(self.lstProductNCode):
+        for i, v in enumerate(self.lstProductCode):
             if Strategy.getHistData(v, self.lstTimeFrame[i]) == False:
-                instInterface.price.rqHistData(v, self.lstProductCode[i], self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
+                instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
                 instInterface.event_loop.exec_()
 
 
@@ -170,7 +171,7 @@ class TS_RB_0014():
                         df.loc[0, 'MP'] = 0
                         print('EL')
                 if df['MP'][0] == -1:
-                    high = min(df['고가'][1:self.nTrailBar+1])
+                    high = max(df['고가'][1:self.nTrailBar+1])
                     if (self.npPriceInfo['현재가'] < high) and (PriceInfo['현재가'] >= high):
                         Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])
                         df.loc[0, 'MP'] = 0

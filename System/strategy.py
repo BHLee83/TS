@@ -24,6 +24,8 @@ class SingletonMeta(type):
 
 class Strategy(metaclass=SingletonMeta):
 
+    strToday = ''
+    strT_1 = ''
     instDB = oracleDB('oraDB1')    # DB 연결
 
     dfCFutMst = pd.DataFrame(None)
@@ -57,8 +59,9 @@ class Strategy(metaclass=SingletonMeta):
         for i in lstUnderId:
             for j in Strategy.dfCFutMst.index:
                 if i == Strategy.dfCFutMst['기초자산ID'][j]:
-                    lstProductCode.append(Strategy.dfCFutMst['단축코드'][j])
-                    break
+                    if Strategy.dfCFutMst['최종거래일'][j] != Strategy.strToday:
+                        lstProductCode.append(Strategy.dfCFutMst['단축코드'][j])
+                        break
 
         return lstProductCode
 
@@ -214,7 +217,7 @@ class Strategy(metaclass=SingletonMeta):
         pass
 
 
-    def setHistData(productNCode, productCode, period, histData):
+    def setHistData(productCode, period, histData):
         if len(histData) == 1:
             for i in Strategy.lstMktData:
                 if (i['PRODUCT_CODE'] == productCode) and (i['PERIOD'] == period):
@@ -225,7 +228,7 @@ class Strategy(metaclass=SingletonMeta):
             if type(ret) == bool:
                 if ret == False:
                     dictData = {}
-                    dictData['PRODUCT_N_CODE'] = productNCode
+                    # dictData['PRODUCT_N_CODE'] = productNCode
                     dictData['PRODUCT_CODE'] = productCode
                     dictData['PERIOD'] = period
                     dictData['VALUES'] = histData.copy()
@@ -254,7 +257,7 @@ class Strategy(metaclass=SingletonMeta):
     def addToHistData(price, PriceInfo):
         for i in Strategy.lstMktData:
             if i['PRODUCT_CODE'] == PriceInfo['단축코드'].decode():
-                settleMin = int(PriceInfo['체결시간'][2:4])
+                settleMin = int(PriceInfo['체결시간'][4:6])
                 if settleMin == 0:
                     settleMin = 60
 
@@ -264,7 +267,7 @@ class Strategy(metaclass=SingletonMeta):
                     continue
 
                 if settleMin % p == 0:
-                    price.rqHistData(i['PRODUCT_N_CODE'], i['PRODUCT_CODE'], '1', i['PERIOD'], Strategy.strStartDate, Strategy.strEndDate, '1')
+                    price.rqHistData(i['PRODUCT_CODE'], '1', i['PERIOD'], Strategy.strStartDate, Strategy.strEndDate, '1')
 
 
     def convertTimeFrame(timeFrame, timeIntrv): # TimeFrame: 'M', 'W', 'D', '1' / TimeInterval(min): '5', '10', ...

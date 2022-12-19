@@ -43,17 +43,18 @@ class TS_RB_0005():
         self.dLowStop = 0.0
 
 
-    # 과거 데이터 생성
+    # 과거 데이터 생성 (인디로 수신시 일봉은 연결선물, 분봉은 근월물 코드로 생성)
     def createHistData(self, instInterface):
+        # for i, v in enumerate(self.lstProductCode):
         for i, v in enumerate(self.lstProductNCode):
             if Strategy.getHistData(v, self.lstTimeFrame[i]) == False:
-                instInterface.price.rqHistData(v, self.lstProductCode[i], self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
+                instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
                 instInterface.event_loop.exec_()
 
 
     # 과거 데이터 로드
     def getHistData(self):
-        data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
+        data = Strategy.getHistData(self.lstProductNCode[self.ix], self.lstTimeFrame[self.ix])
         if type(data) == bool:
             if data == False:
                 return pd.DataFrame(None)
