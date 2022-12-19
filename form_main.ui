@@ -276,7 +276,7 @@
     </column>
     <column>
      <property name="text">
-      <string>기본주문단위</string>
+      <string>주문단위</string>
      </property>
      <property name="textAlignment">
       <set>AlignTrailing|AlignVCenter</set>

@@ -4,6 +4,7 @@ import datetime as dt
 import time
 from datetime import timedelta
 
+import schedule
 # from PyQt5.QAxContainer import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QEventLoop
@@ -53,6 +54,7 @@ class Interface():
         if self.userEnv.userLogin():    # 로그인
             if not self.boolSysReady:
                 self.event_loop.exec_()
+                time.sleep(1)   # 인디 시스템 준비 완료 코드 수신후에도 일부 정보 수신 지연 발생
             
             self.userEnv.setAccount()
             self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
@@ -67,6 +69,8 @@ class Interface():
             self.wndIndi.cbProductCode.currentIndexChanged.connect(self.initStrategyInfo)    # 종목코드 변경
             # self.wndIndi.pbRqPrice.clicked.connect(self.pbRqPrice)    # 시세 요청 버튼 클릭
             self.wndIndi.pbRunStrategy.clicked.connect(self.pbRunStrategy)   # 전략 실행 버튼 클릭
+
+            schedule.every().day.at('15:44').do(self.lastProc)
 
 
     def initDate(self):
@@ -165,7 +169,7 @@ class Interface():
         for i in self.lstObj_Strategy:  # 전략 실행 (최초 1회)
             i.execute(0)
         end = time.process_time()
-        print("Time elapsed: ", timedelta(seconds=end-start))
+        print("Time elapsed(1st run): ", timedelta(seconds=end-start))
 
         self.orderStrategy()    # 접수된 주문 실행
 
@@ -188,6 +192,16 @@ class Interface():
         
         
         self.orderStrategy(PriceInfo)    # 4. 접수된 주문 실행
+
+
+    def lastProc(self): # 종가 주문 등 당일 마지막 처리
+        for i in self.lstObj_Strategy:
+            try:
+                i.lastProc()
+            except:
+                pass
+
+        self.orderStrategy()    # 접수된 주문 실행
 
 
     # 주문 실행
