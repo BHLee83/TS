@@ -22,7 +22,6 @@ class Price():
         # 데이터
         # self.objCurrentStrategy = None
         self.currentProductCode = None
-        self.currentProductNCode = None
         self.strRqPeriod = None
 
         self.dfCFutMst = pd.DataFrame(None, columns={'표준코드', '단축코드', '파생상품ID', '한글종목명', '기초자산ID', '스프레드근월물표준코드', '스프레드원월물표준코드', '최종거래일', '기초자산종목코드', '거래단위', '거래승수'})

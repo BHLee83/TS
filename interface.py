@@ -2,12 +2,13 @@ import importlib
 import pandas as pd
 import datetime as dt
 import time
+import logging
 from datetime import timedelta
 
-import schedule
 # from PyQt5.QAxContainer import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QEventLoop
+from PyQt5.QtCore import QTime, QTimer
 
 from SHi_indi.account import Account
 from SHi_indi.price import Price
@@ -45,6 +46,17 @@ class Interface():
         self.dfPositionT_1 = pd.DataFrame(None)
         self.lstChkBox = []
 
+        # Log
+        logger = logging.getLogger()    # 로그 생성
+        logger.setLevel(logging.INFO)   # 로그의 출력 기준 설정
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')   # log 출력 형식
+        stream_handler = logging.StreamHandler()    # log 출력
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+        file_handler = logging.FileHandler('Log\\' + self.strToday + '.log')    # log를 파일에 출력
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
         # Init. proc.
         self.userEnv = Account(self)
         self.price = Price(self)    # 정보(Historical) 시세 조회용
@@ -54,7 +66,6 @@ class Interface():
         if self.userEnv.userLogin():    # 로그인
             if not self.boolSysReady:
                 self.event_loop.exec_()
-                time.sleep(1)   # 인디 시스템 준비 완료 코드 수신후에도 일부 정보 수신 지연 발생
             
             self.userEnv.setAccount()
             self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
@@ -70,7 +81,11 @@ class Interface():
             # self.wndIndi.pbRqPrice.clicked.connect(self.pbRqPrice)    # 시세 요청 버튼 클릭
             self.wndIndi.pbRunStrategy.clicked.connect(self.pbRunStrategy)   # 전략 실행 버튼 클릭
 
-            schedule.every().day.at('15:44').do(self.lastProc)
+        # Scheduling
+        self.qtTarget = QTime(15, 44, 0)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.lastProc)
+        self.timer.start(1000)
 
 
     def initDate(self):
@@ -171,7 +186,7 @@ class Interface():
         for i in self.lstObj_Strategy:  # 전략 실행 (최초 1회)
             i.execute(0)
         end = time.process_time()
-        print("Time elapsed(1st run): ", timedelta(seconds=end-start))
+        logging.info('Time elapsed(1st run): %s', timedelta(seconds=end-start))
 
         self.orderStrategy()    # 접수된 주문 실행
 
@@ -190,20 +205,22 @@ class Interface():
         for i in self.lstObj_Strategy:
             i.execute(PriceInfo) # 3. 전략 실행
         end = time.process_time()
-        print("Time elapsed: ", timedelta(seconds=end-start))
-        
+        # logging.info('Time elapsed: %s', timedelta(seconds=end-start))
         
         self.orderStrategy(PriceInfo)    # 4. 접수된 주문 실행
 
 
     def lastProc(self): # 종가 주문 등 당일 마지막 처리
-        for i in self.lstObj_Strategy:
-            try:
-                i.lastProc()
-            except:
-                pass
+        now = QTime.currentTime()
+        if now >= self.qtTarget:
+            for i in self.lstObj_Strategy:
+                try:
+                    i.lastProc()
+                except:
+                    pass
 
-        self.orderStrategy()    # 접수된 주문 실행
+            self.orderStrategy()    # 접수된 주문 실행
+            self.timer.stop()
 
 
     # 주문 실행
@@ -440,13 +457,15 @@ class Interface():
             MsgStr = "시스템이 종료됨(" + moduleName +")"
         elif MsgID == 11:
             MsgStr = "시스템이 시작됨(" + moduleName +")"
-            self.boolSysReady = True
-            self.event_loop.exit()
+            if moduleName == 'order.py':
+                self.boolSysReady = True
+                self.event_loop.exit()
         else:
             MsgStr = "System Message Received in module '" + moduleName + "' = " + str(MsgID)
         # print(MsgStr)
         self.wndIndi.statusbar.showMessage(MsgStr)
         self.wndIndi.statusbar.repaint()
+        logging.info('%s', MsgStr)
 
 
     def setErrMsgOnStatusBar(self, ErrState, ErrCode, ErrMsg, moduleName):
@@ -459,3 +478,4 @@ class Interface():
 
         self.wndIndi.statusbar.showMessage('TR상태: ' + strMsg + ' / 에러코드: ' + ErrCode + ' / 메시지: ' + ErrMsg + ' / 모듈: ' + moduleName.split('\\')[-1])
         self.wndIndi.statusbar.repaint()
+        logging.info('TR상태: %s, 에러코드: %s, 메시지: %s, 모듈: %s', strMsg, ErrMsg, moduleName.split('\\')[-1])

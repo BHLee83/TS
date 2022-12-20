@@ -10,12 +10,15 @@ from System.strategy import Strategy
 
 import pandas as pd
 import datetime as dt
+import logging
 
 
 
 class TS_RB_0014():
     def __init__(self, info) -> None:
         super().__init__()
+        self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
+        self.logger.info('Init. start')
 
         # General info
         self.npPriceInfo = None
@@ -26,6 +29,7 @@ class TS_RB_0014():
         self.lstAssetType = self.dfInfo['ASSET_TYPE'].split(',')
         self.lstUnderId = self.dfInfo['UNDERLYING_ID'].split(',')
         self.lstTimeFrame = self.dfInfo['TIMEFRAME'].split(',')
+        self.boolON = bool(int(self.dfInfo['OVERNIGHT']))
         self.lstTrUnit = list(map(int, self.dfInfo['TR_UNIT'].split(',')))
         self.fWeight = self.dfInfo['WEIGHT']
 
@@ -43,7 +47,6 @@ class TS_RB_0014():
         self.nMult = 5
         self.nTrailBar = 30
         self.fDayOpen = 0.0
-        self.stopEndOfDay = True
 
 
     # 과거 데이터 생성 (인디로 수신시 일봉은 연결선물, 분봉은 근월물 코드로 생성)
@@ -123,6 +126,7 @@ class TS_RB_0014():
         if type(PriceInfo) == int:  # 최초 실행
             self.lstData[self.ix] = self.getHistData()  # 과거 데이터 수신
             if self.lstData[self.ix].empty:
+                self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
                 return False
             else:
                 self.applyChart()   # 전략 적용
@@ -135,6 +139,7 @@ class TS_RB_0014():
                     (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):    # 분봉 업데이트 시
                     self.lstData[self.ix] = self.getHistData()  # 과거 데이터 수신
                     if self.lstData[self.ix].empty:
+                        self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
                         return False
                     else:
                         self.applyChart()   # 전략 적용
@@ -157,33 +162,35 @@ class TS_RB_0014():
                         if (self.npPriceInfo['현재가'] < chUp) and (PriceInfo['현재가'] >= chUp):
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 상품코드, 매수/매도, 계약수, 가격
                             df.loc[0, 'MP'] = 1
-                            print('buy')
+                            self.logger.info('Buy %s amount ordered', self.amt_entry)
                     if df['MP'][0] != -1:
                         if (self.npPriceInfo['현재가'] > chDn) and (PriceInfo['현재가'] <= chDn):
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                             df.loc[0, 'MP'] = -1
-                            print('sell')
+                            self.logger.info('Sell %s amount ordered', self.amt_entry)
 
                 if df['MP'][0] == 1:    # Trailing Stops
                     low = min(df['저가'][1:self.nTrailBar+1])
                     if (self.npPriceInfo['현재가'] > low) and (PriceInfo['현재가'] <= low):
                         Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])
                         df.loc[0, 'MP'] = 0
-                        print('EL')
+                        self.logger.info('ExitLong %s amount ordered', self.amt_exit)
                 if df['MP'][0] == -1:
                     high = max(df['고가'][1:self.nTrailBar+1])
                     if (self.npPriceInfo['현재가'] < high) and (PriceInfo['현재가'] >= high):
                         Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])
                         df.loc[0, 'MP'] = 0
-                        print('ES')
+                        self.logger.info('ExitShort %s amount ordered', self.amt_exit)
 
             self.npPriceInfo = PriceInfo.copy()
 
 
     def lastProc(self):
-        if self.stopEndOfDay:
+        if self.boolON == False:
             df = self.lstData[self.ix]
             if df['MP'][0] == 1:
-                Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, 0)
-            if df['MP'][0] == -1:
                 Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, 0)
+                self.logger.info('ExitLong %s amount ordered', self.amt_exit)
+            if df['MP'][0] == -1:
+                Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, 0)
+                self.logger.info('ExitShort %s amount ordered', self.amt_exit)

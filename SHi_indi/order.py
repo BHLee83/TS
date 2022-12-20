@@ -1,3 +1,5 @@
+import logging
+
 from PyQt5.QAxContainer import *
 
 from System.strategy import Strategy
@@ -43,6 +45,8 @@ class Order():
             ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 12, reserve_order)  # 예약주문여부 (생략가능, 1:예약)
             rqid = self.IndiTR.dynamicCall("RequestData()")  # 데이터 요청
             self.rqidD[rqid] = "SABC100U1"
+            logging.info('주문 실행')
+            self.instInterface.event_loop.exec_()
             return True
 
 
@@ -86,7 +90,8 @@ class Order():
                 ErrMsg = self.IndiTR.dynamicCall("GetErrorMessage()")
                 self.instInterface.setErrMsgOnStatusBar(ErrState, ErrCode, ErrMsg, __file__)
             else:
-                print("매수 및 매도 주문결과 :", DATA)
+                # print("매수 및 매도 주문결과 :", DATA)
+                logging.info('주문 접수: %s', DATA)
                 # self.instInterface.objOrder.iqrySettle(self.instInterface.strAcntCode, self.instInterface.dfAcntInfo['Acnt_Pwd'][0], self.instInterface.strToday)   # 체결/미체결 조회
                 self.instInterface.setTwOrderInfoUI(DATA)
             

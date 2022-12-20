@@ -1,14 +1,17 @@
 import pandas as pd
 
 from System.strategy import Strategy
+import logging
 
 
 
 class TS_RB_0007():
     def __init__(self, info) -> None:
         super().__init__()
+        self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
+        self.logger.info('Init. start')
     
-    # General info
+        # General info
         self.npPriceInfo = None
 
         # Global setting variables
@@ -178,29 +181,35 @@ class TS_RB_0007():
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
                             df['MP'][0] = 1
                             self.isFirstTry = False
+                            self.logger.info('Buy %s amount ordered', self.amt_entry)
                     if df['MP'][0] != -1:
                         if (self.npPriceInfo['현재가'] > df['chLower_entry'][0]) and (PriceInfo['현재가'] <= df['chLower_entry'][0]): # 채널 하단 터치시
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
                             df['MP'][0] = -1
-                        self.isFirstTry = False
+                            self.isFirstTry = False
+                            self.logger.info('Sell %s amount ordered', self.amt_entry)
                 else:
                     if self.fPL < 0:
                         if df['MP'][0] != 1:
                             if (self.npPriceInfo['현재가'] < df['chUpper_entry'][0]) and (PriceInfo['현재가'] >= df['chUpper_entry'][0]): # nWeek_entry 채널 상단 터치시
                                 Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
                                 df['MP'][0] = 1
+                                self.logger.info('Buy %s amount ordered', self.amt_entry)
                         if df['MP'][0] != -1:
                             if (self.npPriceInfo['현재가'] > df['chLower_entry'][0]) and (PriceInfo['현재가'] <= df['chLower_entry'][0]): # nWeek_entry 채널 하단 터치시
                                 Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
                                 df['MP'][0] = -1
+                                self.logger.info('Sell %s amount ordered', self.amt_entry)
                     
                     if df['MP'][0] == 1:
                         if (self.npPriceInfo['현재가'] > df['chLower_exit'][0]) and (PriceInfo['현재가'] <= df['chLower_exit'][0]):   # nWeek_exit 채널 하단 터치시
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])   # 매수 청산
                             df.loc[0, 'MP'] = 0
+                            self.logger.info('ExitLong %s amount ordered', self.amt_exit)
                     if df['MP'][0] == -1:
                         if (self.npPriceInfo['현재가'] < df['chUpper_exit'][0]) and (PriceInfo['현재가'] >= df['chUpper_exit'][0]):   # nWeek_exit 채널 상단 터치시
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])   # 매도 청산
                             df.loc[0, 'MP'] = 0
+                            self.logger.info('ExitShort %s amount ordered', self.amt_exit)
 
             self.npPriceInfo = PriceInfo.copy()

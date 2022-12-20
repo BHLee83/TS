@@ -3,12 +3,15 @@ from System.function import Function
 
 import pandas as pd
 from datetime import datetime as dt
+import logging
 
 
 
 class TS_RB_0001():
     def __init__(self, info) -> None:
         super().__init__()
+        self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
+        self.logger.info('Init. start')
 
         # General info
         self.npPriceInfo = None
@@ -98,6 +101,8 @@ class TS_RB_0001():
                         if df['MP'][1] == 1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
                             df.loc[0, 'MP'] = 1
+                            self.logger.info('Buy %s amount ordered', self.amt)
                         if df['MP'][1] == -1:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt, 0)
                             df.loc[0, 'MP'] = -1
+                            self.logger.info('Sell %s amount ordered', self.amt)

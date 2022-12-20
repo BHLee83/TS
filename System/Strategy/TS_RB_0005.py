@@ -1,14 +1,17 @@
 from System.strategy import Strategy
 
 import pandas as pd
+import logging
 
 
 
 class TS_RB_0005():
     def __init__(self, info) -> None:
         super().__init__()
+        self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
+        self.logger.info('Init. start')
     
-    # General info
+        # General info
         self.npPriceInfo = None
 
         # Global setting variables
@@ -203,9 +206,11 @@ class TS_RB_0005():
                     if (self.npPriceInfo['현재가'] < self.dHighStop) and (self.npPriceInfo['현재가'] >= self.dHighStop):
                         Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
                         df.loc[0, 'MP'] = 1
+                        self.logger.info('Buy %s amount ordered', self.amt_entry)
                 if (df['MP'][1] != -1) and (df['MP'][0] != -1):
                     if (self.npPriceInfo['현재가'] > self.dLowStop) and (self.npPriceInfo['현재가'] <= self.dLowStop):
                         Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
                         df.loc[0, 'MP'] = -1
+                        self.logger.info('Sell %s amount ordered', self.amt_entry)
 
             self.npPriceInfo = PriceInfo.copy()

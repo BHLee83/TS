@@ -2,6 +2,7 @@ from threading import Lock
 import pandas as pd
 import numpy as np
 import datetime as dt
+import logging
 
 from DB.dbconn import oracleDB
 
@@ -23,6 +24,9 @@ class SingletonMeta(type):
 
 
 class Strategy(metaclass=SingletonMeta):
+
+    logger = logging.getLogger(__name__)  # 로그 생성
+    logger.info('Init. start')
 
     strToday = ''
     strT_1 = ''
@@ -87,6 +91,7 @@ class Strategy(metaclass=SingletonMeta):
         Strategy.dfStrategyInfo = Strategy.instDB.query_to_df(strQuery, 100)
         if len(Strategy.dfStrategyInfo) != 0:
             Strategy.dfStrategyInfo['TR_UNIT'] = Strategy.dfStrategyInfo['TR_UNIT'].astype(str)
+
 
     # Abnormal Order Check!
     def chkAbnormOrder(acnt_num, code, qty, price, direction):
@@ -165,6 +170,7 @@ class Strategy(metaclass=SingletonMeta):
         Strategy.nettingOrder() # 네팅해서 주문
         for i in Strategy.lstOrderInfo_Net:
             if i['QUANTITY'] == 0:  # 네팅 수량이 0이면 주문 패스
+                Strategy.logger.info('네팅 수량 0으로 실주문 없음')
                 continue
             if PriceInfo == None:
                 if i['QUANTITY'] > 0:
@@ -172,7 +178,9 @@ class Strategy(metaclass=SingletonMeta):
                 elif i['QUANTITY'] < 0:
                     direction = '01'
                 ret = instInterface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), 0, direction, 'M')
+                Strategy.logger.info('실주문: %s, %s, %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], abs(i['QUANTITY']), 0, direction, 'M')
                 if ret is False:
+                    Strategy.logger.info('주문 실패!')
                     return ret
             else:
                 if i['QUANTITY'] > 0: # 일단 현재가로 주문 (실거래시 상대호가 등으로 바꿀것)
@@ -182,11 +190,13 @@ class Strategy(metaclass=SingletonMeta):
                     price = PriceInfo['현재가']
                     direction = '01'
                 ret = instInterface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
+                Strategy.logger.info('실주문: %s, %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
                 if ret is False:
+                    Strategy.logger.info('주문 실패!')
                     return ret
 
         instInterface.setTwOrderInfoUI()    # 전략별 주문 요청내역 출력
-        instInterface.event_loop.exec_()
+        # instInterface.event_loop.exec_()
 
         
     def nettingOrder(): # 주문 통합하기
@@ -235,7 +245,7 @@ class Strategy(metaclass=SingletonMeta):
                     Strategy.lstMktData.append(dictData)
             
 
-    def getHistData(productCode, period):
+    def getHistData(productCode, period) -> np.ndarray or bool:
         for i in Strategy.lstMktData:
             if (i['PRODUCT_CODE'] == productCode) and (i['PERIOD'] == period):
                 return i['VALUES']
