@@ -12,6 +12,10 @@ from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtWidgets import QLineEdit
 from PyQt5.QtWidgets import QMessageBox
 
+import sys
+from os import path
+wd = path.dirname( path.abspath(__file__) )
+sys.path.append(wd)
 from DB.dbconn import oracleDB
 from SHi_indi.config import Config
 
@@ -95,7 +99,7 @@ class IndiWindow(QMainWindow):
 
         self.rqDaily()
         self.rqMinute()
-        self.rqTick()
+        # self.rqTick()
 
         mbDone = QMessageBox(self)
         mbDone.setText('Done!')
@@ -139,20 +143,6 @@ class IndiWindow(QMainWindow):
             self.rqidD[rqid] =  self.strTRCFChart
             self.event_loop.exec_()
 
-            # 요청 대상일이 근월물의 최종거래일인 경우 차근월물 데이터도 입수
-            if self.strDtTarget == self.dfCFutMst[self.dfCFutMst['단축코드']==self.strCurrentSymbol]['최종거래일'].values[0]:
-                self.strCurrentSymbol = self.lstSymbols_2nd_Month[i]
-                ret = self.IndiTR.dynamicCall("SetQueryName(QString)", self.strTRCFChart)
-                ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, self.strCurrentSymbol)  # 단축코드
-                ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, self.strRqDataType)    # 1: 분데이터, D:일데이터
-                ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, self.strRqTimeIntvl)    # 시간간격 (분데이터일 경우 1-30, 일데이터일 경우 1)
-                ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, self.strDtTarget) # YYYYMMDD (분 데이터 요청시: "00000000")
-                ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, self.strDtTarget) # YYYYMMDD (분 데이터 요청시: "99999999")
-                ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 5, '1')  # 조회갯수 (1 - 9999)
-                rqid = self.IndiTR.dynamicCall("RequestData()")
-                self.rqidD[rqid] =  self.strTRCFChart
-                self.event_loop.exec_()
-
         for i in self.lstSymbols_Continuous:    # 연결선물
             self.strCurrentSymbol = i
             ret = self.IndiTR.dynamicCall("SetQueryName(QString)", self.strTRCFNChart)
@@ -185,20 +175,6 @@ class IndiWindow(QMainWindow):
                 rqid = self.IndiTR.dynamicCall("RequestData()")
                 self.rqidD[rqid] =  self.strTRCFChart
                 self.event_loop.exec_()
-
-                # 요청 대상일이 근월물의 최종거래일인 경우 차근월물 데이터도 입수
-                if self.strDtTarget == self.dfCFutMst[self.dfCFutMst['단축코드']==self.strCurrentSymbol]['최종거래일'].values[0]:
-                    self.strCurrentSymbol = self.lstSymbols_2nd_Month[i]
-                    ret = self.IndiTR.dynamicCall("SetQueryName(QString)", self.strTRCFChart)
-                    ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, self.strCurrentSymbol)  # 단축코드
-                    ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, self.strRqDataType)    # 1: 분데이터, D:일데이터
-                    ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, self.strRqTimeIntvl)    # 시간간격 (분데이터일 경우 1-30, 일데이터일 경우 1)
-                    ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, self.strDtTarget) # YYYYMMDD (분 데이터 요청시: "00000000")
-                    ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, self.strDtTarget) # YYYYMMDD (분 데이터 요청시: "99999999")
-                    ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 5, '410')  # 조회갯수 (1 - 9999)
-                    rqid = self.IndiTR.dynamicCall("RequestData()")
-                    self.rqidD[rqid] =  self.strTRCFChart
-                    self.event_loop.exec_()
 
         for i in self.lstSymbols_Continuous:    # 연결선물
             self.strCurrentSymbol = i
