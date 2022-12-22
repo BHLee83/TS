@@ -189,6 +189,7 @@ class Interface():
         logging.info('Time elapsed(1st run): %s', timedelta(seconds=end-start))
 
         self.orderStrategy()    # 접수된 주문 실행
+        # self.event_loop.exec_()
 
 
     # 2. 실시간 시세 수신

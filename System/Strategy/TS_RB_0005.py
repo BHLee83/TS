@@ -152,9 +152,11 @@ class TS_RB_0005():
                         if PriceInfo['현재가'] >= self.dHighStop:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 시초가 매수
                             df.loc[0, 'MP'] = 1
+                            self.logger.info('Buy %s amount ordered', self.amt_entry)
                         if PriceInfo['현재가'] <= self.dLowStop:
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 시초가 매도
                             df.loc[0, 'MP'] = -1
+                            self.logger.info('Sell %s amount ordered', self.amt_entry)
             else:
                 self.boolNewHigh = False
                 self.boolNewLow = False

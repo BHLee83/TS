@@ -186,7 +186,7 @@ class TS_RB_0014():
 
 
     def lastProc(self):
-        if self.boolON == False:
+        if self.boolON == False:    # 당일 종가 청산
             df = self.lstData[self.ix]
             if df['MP'][0] == 1:
                 Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, 0)

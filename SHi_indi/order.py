@@ -1,6 +1,7 @@
 import logging
 
 from PyQt5.QAxContainer import *
+from PyQt5.QtCore import QEventLoop
 
 from System.strategy import Strategy
 
@@ -23,7 +24,7 @@ class Order():
         self.rqidD = {}
 
 
-    def order(self, acnt_num:str, pwd:str, code:str, qty, price, direction:str, condition:str='0', order_type:str='L', trading_type:str='3', treat_type:str='1', modify_type:str='0', origin_order_num=None, reserve_order=None):
+    def order(self, instInterface, acnt_num:str, pwd:str, code:str, qty, price, direction:str, condition:str='0', order_type:str='L', trading_type:str='3', treat_type:str='1', modify_type:str='0', origin_order_num=None, reserve_order=None):
         " 선물 주문을 요청한다."
         if Strategy.chkAbnormOrder(acnt_num, code, qty, price, direction):  # 주문 이상여부 체크
             self.ReceiveSysMsg('주문 거부. 이상주문 감지. 시스템을 확인하세요!')
@@ -46,7 +47,7 @@ class Order():
             rqid = self.IndiTR.dynamicCall("RequestData()")  # 데이터 요청
             self.rqidD[rqid] = "SABC100U1"
             logging.info('주문 실행')
-            self.instInterface.event_loop.exec_()
+
             return True
 
 
@@ -95,7 +96,7 @@ class Order():
                 # self.instInterface.objOrder.iqrySettle(self.instInterface.strAcntCode, self.instInterface.dfAcntInfo['Acnt_Pwd'][0], self.instInterface.strToday)   # 체결/미체결 조회
                 self.instInterface.setTwOrderInfoUI(DATA)
             
-            self.instInterface.event_loop.exit()
+            # self.instInterface.event_loop.exit()
 
         elif TRName == "SABC258Q1":
             DATA = {}

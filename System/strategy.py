@@ -25,8 +25,7 @@ class SingletonMeta(type):
 
 class Strategy(metaclass=SingletonMeta):
 
-    logger = logging.getLogger(__name__)  # 로그 생성
-    logger.info('Init. start')
+    # logger = logging.getLogger(__name__)  # 로그 생성
 
     strToday = ''
     strT_1 = ''
@@ -170,29 +169,29 @@ class Strategy(metaclass=SingletonMeta):
         Strategy.nettingOrder() # 네팅해서 주문
         for i in Strategy.lstOrderInfo_Net:
             if i['QUANTITY'] == 0:  # 네팅 수량이 0이면 주문 패스
-                Strategy.logger.info('네팅 수량 0으로 실주문 없음')
+                logging.info('네팅 수량 0으로 실주문 없음')
                 continue
             if PriceInfo == None:
                 if i['QUANTITY'] > 0:
                     direction = '02'
                 elif i['QUANTITY'] < 0:
                     direction = '01'
+                logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], 'M')
                 ret = instInterface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), 0, direction, 'M')
-                Strategy.logger.info('실주문: %s, %s, %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], abs(i['QUANTITY']), 0, direction, 'M')
                 if ret is False:
-                    Strategy.logger.info('주문 실패!')
+                    logging.warning('주문 실패!')
                     return ret
             else:
-                if i['QUANTITY'] > 0: # 일단 현재가로 주문 (실거래시 상대호가 등으로 바꿀것)
+                if i['QUANTITY'] > 0: # FIXME: 일단 현재가로 주문 (실거래시 상대호가 등으로 바꿀것)
                     price = PriceInfo['현재가']
                     direction = '02'
                 elif i['QUANTITY'] < 0:
                     price = PriceInfo['현재가']
                     direction = '01'
-                ret = instInterface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
-                Strategy.logger.info('실주문: %s, %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
+                logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], price)
+                ret = instInterface.objOrder.order(instInterface, acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
                 if ret is False:
-                    Strategy.logger.info('주문 실패!')
+                    logging.warning('주문 실패!')
                     return ret
 
         instInterface.setTwOrderInfoUI()    # 전략별 주문 요청내역 출력
