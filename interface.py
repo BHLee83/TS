@@ -69,8 +69,9 @@ class Interface():
             
             self.userEnv.setAccount()
             self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
+            self.event_loop.exec_()
             
-            Strategy.__init__()
+            Strategy.__init__() 
             self.initDate()
             self.initAcntInfo()
             self.initStrategyInfo() # 초기 전략 세팅
@@ -200,7 +201,7 @@ class Interface():
 
     # 3. 전략 실행 (실시간)
     def executeStrategy(self, PriceInfo):
-        Strategy.chkPrice(self.price, PriceInfo)  # 분봉 완성 check
+        Strategy.chkPrice(self, PriceInfo)  # 분봉 완성 check
 
         start = time.process_time()
         for i in self.lstObj_Strategy:
@@ -479,4 +480,4 @@ class Interface():
 
         self.wndIndi.statusbar.showMessage('TR상태: ' + strMsg + ' / 에러코드: ' + ErrCode + ' / 메시지: ' + ErrMsg + ' / 모듈: ' + moduleName.split('\\')[-1])
         self.wndIndi.statusbar.repaint()
-        logging.info('TR상태: %s, 에러코드: %s, 메시지: %s, 모듈: %s', strMsg, ErrMsg, moduleName.split('\\')[-1])
+        logging.info('TR상태: %s, 에러코드: %s, 메시지: %s, 모듈: %s', strMsg, ErrCode, ErrMsg, moduleName.split('\\')[-1])

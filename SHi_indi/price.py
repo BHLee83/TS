@@ -4,6 +4,7 @@ import pandas as pd
 from System.strategy import Strategy
 
 
+
 class Price():
 
     def __init__(self, instInterface):

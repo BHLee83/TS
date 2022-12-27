@@ -1,10 +1,8 @@
 # 타임프레임: 5분봉
 # - Entry
-#   Long: 12시 이전에 시초가에서 5ATR만큼 상승 / Short: 12시 이전에 시초가에서 5ATR만큼 하락
+#   Long: 오전 중 스토캐스틱 값이 상단 레벨을 3번 돌파하면 / Short: 오전 중 스토캐스틱 값이 하단 레벨을 3번 이탈하면
 # - Exit
 #   당일종가청산
-# 수수료: 0.006%
-# 슬리피지: 0.05pt
 
 from System.strategy import Strategy
 
@@ -14,7 +12,7 @@ import logging
 
 
 
-class TS_RB_0014():
+class TS_RB_0016_1():
     def __init__(self, info) -> None:
         super().__init__()
         self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
@@ -44,9 +42,10 @@ class TS_RB_0014():
 
         # Local setting variables
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
-        self.nMult = 5
-        self.nTrailBar = 30
-        self.fDayOpen = 0.0
+        self.nP1 = 10
+        self.nP2 = 40
+        self.fOBL = 70
+        self.fOSL = 30
 
 
     # 과거 데이터 생성 (인디로 수신시 일봉은 연결선물, 분봉은 근월물 코드로 생성)
@@ -84,42 +83,27 @@ class TS_RB_0014():
         self.lstData[self.ix] = self.lstData[self.ix].drop('index', axis=1)
 
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
-        df['Range'] = (df['고가']-df['저가']).rolling(window=30).mean()
+        # Fast %K = ((현재가 - n기간 중 최저가) / (n기간 중 최고가 - n기간 중 최저가)) * 100
+        fastK = ((df['종가'] - df['저가'].rolling(self.nP1).min()) / (df['고가'].rolling(self.nP1).max() - df['저가'].rolling(self.nP1).min())) * 100
+        # Slow %K = Fast %K의 m기간 이동평균(SMA)
+        df['slowK'] = fastK.rolling(window=self.nP2).mean()
         df['MP'] = 0
         for i in df.index:
-            if i > 30:
+            if i > self.nP2:
                 df.loc[i, 'MP'] = df['MP'][i-1]
-                if df['일자'][i] != df['일자'][i-1]:
-                    self.fDayOpen = df['시가'][i]
-
-                if self.fDayOpen == 0:
-                    continue
-
-                chUp = self.fDayOpen + df['Range'][i] * self.nMult
-                chDn = self.fDayOpen - df['Range'][i] * self.nMult
                 t = int(df['시간'][i])
-                if t < 1205:   # Entry
-                    if df['MP'][i] != 1:
-                        if df['고가'][i] >= chUp:
-                            df.loc[i, 'MP'] = 1
-                    if df['MP'][i] != -1:
-                        if df['저가'][i] <= chDn:
-                            df.loc[i, 'MP'] = -1
-                                
-                if i > self.nTrailBar:  # Trailing Stops
-                    if df['MP'][i] == 1:
-                        if df['저가'][i] <= min(df['저가'][i-self.nTrailBar:i-1]):
-                            df.loc[i, 'MP'] = 0
-                    if df['MP'][i] == -1:
-                        if df['고가'][i] >= max(df['고가'][i-self.nTrailBar:i-1]):
-                            df.loc[i, 'MP'] = 0
-
-                if t == 1545:   # End of day exit
+                if t == 1545:
                     df.loc[i, 'MP'] = 0
-
+                if (t >= 905) and (t < 1205):   # Entry
+                    if self.fOBL < min(df['slowK'][i-3+1:i+1]):
+                        if df['MP'][i] != -1:
+                            df.loc[i, 'MP'] = 1
+                    if self.fOSL > max(df['slowK'][i-3+1:i+1]):
+                        if df['MP'][i] != 1:
+                            df.loc[i, 'MP'] = -1
+                            
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[self.ix]['MP'] = df['MP']
-        self.lstData[self.ix]['Range'] = df['Range']
 
 
     # 전략 실행
@@ -133,8 +117,7 @@ class TS_RB_0014():
                 self.applyChart()   # 전략 적용
         else:
             if self.npPriceInfo == None:    # 첫 데이터 수신시
-                self.fDayOpen = PriceInfo['시가']
-                Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', 1, 0)
+                pass
             else:
                 if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
                     (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):    # 분봉 업데이트 시
@@ -145,42 +128,25 @@ class TS_RB_0014():
                     else:
                         self.applyChart()   # 전략 적용
 
-                try:    # 포지션 확인 및 수량 지정
-                    self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
-                                        and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
-                                        and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
-                except:
-                    self.nPosition = 0
-                self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
-                self.amt_exit = abs(self.nPosition)
+                    try:    # 포지션 확인 및 수량 지정
+                        self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
+                                            and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
+                                            and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
+                    except:
+                        self.nPosition = 0
+                    self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
+                    self.amt_exit = abs(self.nPosition)
 
-                df = self.lstData[self.ix]
-                if int(str(PriceInfo['체결시간'])[2:4]) < 12: # Entry
-                    chUp = self.fDayOpen + df['Range'][0] * self.nMult  # FIXME: Range에 현재가격(PriceInfo) 반영되게 수정해야할 듯. 데이터 확인 필요
-                    chDn = self.fDayOpen - df['Range'][0] * self.nMult
-                    if df['MP'][0] != 1:
-                        if (self.npPriceInfo['현재가'] < chUp) and (PriceInfo['현재가'] >= chUp):
+                    df = self.lstData[self.ix]
+                    if int(str(PriceInfo['체결시간'])[2:4]) < 12: # Entry
+                        if (df['MP'][1] == 0) and (df['MP'][0] == 1):
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 상품코드, 매수/매도, 계약수, 가격
                             df.loc[0, 'MP'] = 1
                             self.logger.info('Buy %s amount ordered', self.amt_entry)
-                    if df['MP'][0] != -1:
-                        if (self.npPriceInfo['현재가'] > chDn) and (PriceInfo['현재가'] <= chDn):
+                        if (df['MP'][1] == 0) and (df['MP'][0] == -1):
                             Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                             df.loc[0, 'MP'] = -1
                             self.logger.info('Sell %s amount ordered', self.amt_entry)
-
-                if df['MP'][0] == 1:    # Trailing Stops
-                    low = min(df['저가'][1:self.nTrailBar+1])
-                    if (self.npPriceInfo['현재가'] > low) and (PriceInfo['현재가'] <= low):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])
-                        df.loc[0, 'MP'] = 0
-                        self.logger.info('ExitLong %s amount ordered', self.amt_exit)
-                if df['MP'][0] == -1:
-                    high = max(df['고가'][1:self.nTrailBar+1])
-                    if (self.npPriceInfo['현재가'] < high) and (PriceInfo['현재가'] >= high):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])
-                        df.loc[0, 'MP'] = 0
-                        self.logger.info('ExitShort %s amount ordered', self.amt_exit)
 
             self.npPriceInfo = PriceInfo.copy()
 

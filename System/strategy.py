@@ -4,6 +4,8 @@ import numpy as np
 import datetime as dt
 import logging
 
+from PyQt5.QtCore import QTimer
+
 from DB.dbconn import oracleDB
 
 
@@ -46,7 +48,10 @@ class Strategy(metaclass=SingletonMeta):
     lstOrderInfo_Net = []
 
     dfOrderInfo_All = pd.DataFrame(None)
-    
+
+    timer = None
+
+
     def __init__() -> None:
         Strategy.setProductInfo()
 
@@ -163,9 +168,9 @@ class Strategy(metaclass=SingletonMeta):
         Strategy.lstOrderInfo.append(dictOrderInfo)
 
 
-    def executeOrder(instInterface, PriceInfo):
-        acntCode = instInterface.strAcntCode
-        acntPwd = instInterface.dfAcntInfo['Acnt_Pwd'][0]
+    def executeOrder(interface, PriceInfo):
+        acntCode = interface.strAcntCode
+        acntPwd = interface.dfAcntInfo['Acnt_Pwd'][0]
         Strategy.nettingOrder() # 네팅해서 주문
         for i in Strategy.lstOrderInfo_Net:
             if i['QUANTITY'] == 0:  # 네팅 수량이 0이면 주문 패스
@@ -177,7 +182,7 @@ class Strategy(metaclass=SingletonMeta):
                 elif i['QUANTITY'] < 0:
                     direction = '01'
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], 'M')
-                ret = instInterface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), 0, direction, 'M')
+                ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), 0, direction, 'M')
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
@@ -189,13 +194,15 @@ class Strategy(metaclass=SingletonMeta):
                     price = PriceInfo['현재가']
                     direction = '01'
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], price)
-                ret = instInterface.objOrder.order(instInterface, acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
+                ret = interface.objOrder.order(interface, acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
 
-        instInterface.setTwOrderInfoUI()    # 전략별 주문 요청내역 출력
-        # instInterface.event_loop.exec_()
+        interface.setTwOrderInfoUI()    # 전략별 주문 요청내역 출력
+        Strategy.timer = QTimer()
+        Strategy.timer.singleShot(2000, interface.event_loop.quit)
+        interface.event_loop.exec_()
 
         
     def nettingOrder(): # 주문 통합하기
@@ -252,21 +259,21 @@ class Strategy(metaclass=SingletonMeta):
         return False
 
     
-    def chkPrice(price, PriceInfo):
+    def chkPrice(interface, PriceInfo):
         for i, v in enumerate(Strategy.lstPriceInfo):
             if v['단축코드'] == PriceInfo['단축코드']:
-                if str(v['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]:    # hour or min. 이 바뀌면
-                    Strategy.addToHistData(price, PriceInfo)
+                if v['체결시간'].decode()[2:4] != PriceInfo['체결시간'].decode()[2:4]:  # min. 이 바뀌면
+                    Strategy.addToHistData(interface, PriceInfo)
                 Strategy.lstPriceInfo[i] = PriceInfo.copy()
                 return
 
         Strategy.lstPriceInfo.append(PriceInfo.copy())
 
 
-    def addToHistData(price, PriceInfo):
+    def addToHistData(interface, PriceInfo):
         for i in Strategy.lstMktData:
             if i['PRODUCT_CODE'] == PriceInfo['단축코드'].decode():
-                settleMin = int(PriceInfo['체결시간'][4:6])
+                settleMin = int(PriceInfo['체결시간'].decode()[2:4])
                 if settleMin == 0:
                     settleMin = 60
 
@@ -276,7 +283,10 @@ class Strategy(metaclass=SingletonMeta):
                     continue
 
                 if settleMin % p == 0:
-                    price.rqHistData(i['PRODUCT_CODE'], '1', i['PERIOD'], Strategy.strStartDate, Strategy.strEndDate, '1')
+                    interface.price.rqHistData(i['PRODUCT_CODE'], '1', i['PERIOD'], Strategy.strStartDate, Strategy.strEndDate, '1')
+                    Strategy.timer = QTimer()
+                    Strategy.timer.singleShot(2000, interface.event_loop.quit)
+                    interface.event_loop.exec_()
 
 
     def convertTimeFrame(timeFrame, timeIntrv): # TimeFrame: 'M', 'W', 'D', '1' / TimeInterval(min): '5', '10', ...
