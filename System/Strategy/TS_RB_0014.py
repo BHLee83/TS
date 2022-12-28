@@ -134,7 +134,7 @@ class TS_RB_0014():
         else:
             if self.npPriceInfo == None:    # 첫 데이터 수신시
                 self.fDayOpen = PriceInfo['시가']
-                Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', 1, 0)
+                Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', 1, 0)    # test
             else:
                 if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
                     (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):    # 분봉 업데이트 시
@@ -145,12 +145,15 @@ class TS_RB_0014():
                     else:
                         self.applyChart()   # 전략 적용
 
-                try:    # 포지션 확인 및 수량 지정
-                    self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
-                                        and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
-                                        and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
-                except:
+                if Strategy.dfPosition.empty:   # 포지션 확인 및 수량 지정
                     self.nPosition = 0
+                else:
+                    try:
+                        self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
+                                            and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
+                                            and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
+                    except:
+                        self.nPosition = 0
                 self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
                 self.amt_exit = abs(self.nPosition)
 
