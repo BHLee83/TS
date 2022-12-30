@@ -39,12 +39,12 @@ class Interface():
         self.strT_1 = ''
 
         # Local settings
+        self.lstChkBox = []
         self.lstObj_Strategy = []
-        self.dfAcntInfo = pd.DataFrame(None)
         self.strAcntCode = ''
+        self.dfAcntInfo = pd.DataFrame(None)
         self.strProductCode = ''
         self.dfPositionT_1 = pd.DataFrame(None)
-        self.lstChkBox = []
 
         # Log
         logger = logging.getLogger()    # 로그 생성
@@ -229,97 +229,113 @@ class Interface():
     def orderStrategy(self, PriceInfo=None):
         if Strategy.lstOrderInfo != []:    # 주문할게 있으면
             Strategy.executeOrder(self, PriceInfo)  # 주문하고
+            Strategy.dictOrderInfo[Strategy.nOrderCnt] = Strategy.lstOrderInfo.copy()   # 주문내역 별도 보관(넘버링)
+            Strategy.dictOrderInfo_Net[Strategy.nOrderCnt] = Strategy.lstOrderInfo_Net.copy()
+            Strategy.lstOrderInfo.clear()   # 주문내역 초기화
+            Strategy.lstOrderInfo_Net.clear()
+            Strategy.nOrderCnt += 1
+
             self.objOrder.startSettleRT(self.strAcntCode)  # 실시간 체결 수신
             self.objBalance.startBalanceRT(self.strAcntCode)    # 실시간 잔고 요청
             
-            # 임시
-            Strategy.lstOrderInfo = []  # 주문내역 초기화
-            Strategy.lstOrderInfo_Net = []
-
 
     # 실시간 체결정보 확인
     def setSettleInfo(self, DATA):
-        for i in Strategy.lstOrderInfo_Net:
-            if i['PRODUCT_CODE'] == DATA['종목코드']:
-                i['AVG_PRICE'] = (i['AVG_PRICE'] * i['SETTLE_QTY'] + DATA['체결가격'] * DATA['체결수량']) / (i['SETTLE_QTY'] + DATA['체결수량'])
-                i['SETTLE_QTY'] += DATA['체결수량']
-                self.setTwSettleInfoUI(DATA)
-
-        if DATA['미체결수량'] == 0: # 전량 체결 완료시
-            for i in Strategy.lstOrderInfo: # 전략별
-                for j in Strategy.lstOrderInfo_Net: # 체결가격 할당
-                    if i['PRODUCT_CODE'] == j['PRODUCT_CODE']:
-                        i['SETTLE_PRICE'] == j['AVG_PRICE']
+        if Strategy.dictOrderInfo_Rcv[DATA['주문번호']] == None:  # 첫 체결
+            if DATA['미체결수량'] == 0: # 전량 체결
+                lstOrderInfo_Net = sorted(Strategy.dictOrderInfo_Net.items(), reverse=True) # 가장 나중 주문부터
+                settleData = [DATA['종목코드'], (int(DATA['매도매수구분'])*2-3) * int(DATA['주문수량']), float(DATA['주문단가'])]
+                for i, v in enumerate(lstOrderInfo_Net):
+                    orderData = [v['PRODUCT_CODE'], v['QUANTITY'], v['PRICE']]
+                    if settleData == orderData: # 종목코드, 수량(방향), 주문가격 일치하면
+                        lstOrderInfo = Strategy.dictOrderInfo[i]
+                        for j in lstOrderInfo:
+                            j['SETTLE_PRICE'] = DATA['체결단가']
+                        self.updatePosition(lstOrderInfo)   # 포지션 업데이트
+                        self.inputOrder2DB(lstOrderInfo)    # DB에 쓰기
                         break
-                
-                for k in Strategy.dfPosition.index: # 포지션 현황 업데이트
-                    if (i['STRATEGY_NAME'], i['ASSET_CODE'], i['MATURITY']) == \
-                        (Strategy.dfPosition['STRATEGY_ID'][k], Strategy.dfPosition['ASSET_CODE'][k], Strategy.dfPosition['MATURITY'][k]):  # 전략명, 자산코드, 만기 일치
-                        qty = Strategy.dfPosition['POS_DIRECTION'][k] * Strategy.dfPosition['POS_AMOUNT'][k] + i['QUANTITY']
-                        Strategy.dfPosition['POS_DIRECTION'][k] = int(qty / abs(qty))
-                        Strategy.dfPosition['POS_AMOUNT'][k] = abs(qty)
-                        break
+            else:   # 미체결 남은 경우
+                Strategy.dictOrderInfo_Rcv[DATA['주문번호']] == DATA.copy()
+                logging.warning('일부 체결 발생 1. 로직 완성해야 함')
+        else:   # 기존 체결정보가 있는 경우 (분할 체결)
+            if DATA['미체결수량'] == 0: # 잔량 체결 완료
+                logging.warning('일부 체결 발생 2. 로직 완성해야 함')
+            else:   # 미체결 남은 경우 pass
+                logging.warning('일부 체결 발생 3. 로직 완성해야 함')
 
-                    if k == Strategy.dfPosition.last_valid_index(): # 없으면 신규 추가
-                        l = len(Strategy.dfPosition)
-                        Strategy.dfPosition.loc[l]['BASE_DATE'] = self.dtToday
-                        Strategy.dfPosition.loc[l]['STRATEGY_CLASS'] = self.strStrategyClass
-                        Strategy.dfPosition.loc[l]['STRATEGY_ID'] = i['STRATEGY_NAME']
-                        Strategy.dfPosition.loc[l]['ASSET_CLASS'] = i['ASSET_CLASS']
-                        Strategy.dfPosition.loc[l]['ASSET_NAME'] = i['ASSET_NAME']
-                        Strategy.dfPosition.loc[l]['ASSET_TYPE'] = i['ASSET_TYPE']
-                        Strategy.dfPosition.loc[l]['MATURITY'] = i['MATURITY']
-                        Strategy.dfPosition.loc[l]['SETTLE_CURNCY'] = self.strSettleCrncy
-                        if DATA['매도매수구분'] == '02':
-                            d = 1
-                        elif DATA['매도매수구분'] == '01':
-                            d = -1
-                        Strategy.dfPosition.loc[l]['POS_DIRECTION'] = d
-                        Strategy.dfPosition.loc[l]['POS_AMOUNT'] = i['SETTLE_QTY']
+        logging.info('주문 체결')
+        self.setTwSettleInfoUI(DATA)
+        
 
-                self.inputOrder2DB(i)    # DB에 쓰기
+    # 포지션 업데이트
+    def updatePosition(self, orderInfo):
+        for i in orderInfo:
+            for k in Strategy.dfPosition.index: # 포지션 현황 업데이트
+                order = [i['STRATEGY_NAME'], i['ASSET_CODE'], i['MATURITY']]
+                pos = [Strategy.dfPosition['STRATEGY_ID'][k], Strategy.dfPosition['ASSET_CODE'][k], Strategy.dfPosition['MATURITY'][k]]
+                if order == pos:    # 전략명, 자산코드, 만기 일치
+                    qty = Strategy.dfPosition['POS_DIRECTION'][k] * Strategy.dfPosition['POS_AMOUNT'][k] + i['QUANTITY']
+                    Strategy.dfPosition['POS_DIRECTION'][k] = int(qty / abs(qty))
+                    Strategy.dfPosition['POS_AMOUNT'][k] = abs(qty)
+                    break
 
-            self.setTwPositionInfoUI()  # 포지션 현황 출력
-            
-            Strategy.lstOrderInfo = []  # 주문내역 초기화
-            Strategy.lstOrderInfo_Net = []
+                if k == Strategy.dfPosition.last_valid_index(): # 없으면 신규 추가
+                    l = len(Strategy.dfPosition)
+                    Strategy.dfPosition.loc[l]['BASE_DATE'] = self.dtToday
+                    Strategy.dfPosition.loc[l]['STRATEGY_CLASS'] = self.strStrategyClass
+                    Strategy.dfPosition.loc[l]['STRATEGY_ID'] = i['STRATEGY_NAME']
+                    Strategy.dfPosition.loc[l]['ASSET_CLASS'] = i['ASSET_CLASS']
+                    Strategy.dfPosition.loc[l]['ASSET_NAME'] = i['ASSET_NAME']
+                    Strategy.dfPosition.loc[l]['ASSET_TYPE'] = i['ASSET_TYPE']
+                    Strategy.dfPosition.loc[l]['MATURITY'] = i['MATURITY']
+                    Strategy.dfPosition.loc[l]['SETTLE_CURNCY'] = self.strSettleCrncy
+                    Strategy.dfPosition.loc[l]['POS_DIRECTION'] = int(i['QUANTITY'] / abs(i['QUANTITY']))
+                    Strategy.dfPosition.loc[l]['POS_AMOUNT'] = abs(i['QUANTITY'])
 
+        logging.info('포지션 업데이트')
+        self.setTwPositionInfoUI()  # 포지션 현황 출력
+        
+#             if i['PRODUCT_CODE'] == DATA['종목코드']:
+#                 i['AVG_PRICE'] = (i['AVG_PRICE'] * i['SETTLE_QTY'] + DATA['체결가격'] * DATA['체결수량']) / (i['SETTLE_QTY'] + DATA['체결수량'])
+#                 i['SETTLE_QTY'] += DATA['체결수량']
+#                 self.setTwSettleInfoUI(DATA)
     
 
     # 전략별 거래내역 DB에 기록
     def inputOrder2DB(self, orderInfo):
-        strQuery = f"SELECT COUNT(*) FROM transactions WHERE base_datetime LIKE '{self.dtToday}%'"
-        ret = Strategy.instDB.query_to_df(strQuery, 1)
-        strTRnum = self.strStrategyClass[:1]    # ex) 'S'
-        strTRnum += self.strToday   # Syyyymmdd ex) 'S20221103'
-        strTRnum += '_' + format(int(ret[0][0])+1, '04')    # Syyyymmdd_xxxx ex) 'S20221103_0012'
+        for i in orderInfo:
+            strQuery = f"SELECT COUNT(*) FROM transactions WHERE base_datetime LIKE '{self.dtToday}%'"
+            ret = Strategy.instDB.query_to_df(strQuery, 1)
+            strTRnum = self.strStrategyClass[:1]    # ex) 'S'
+            strTRnum += self.strToday   # Syyyymmdd ex) 'S20221103'
+            strTRnum += '_' + format(int(ret[0][0])+1, '04')    # Syyyymmdd_xxxx ex) 'S20221103_0012'
 
-        dictTrInfo = {}
-        dictTrInfo['BASE_DATETIME'] = self.dtToday + ' ' + orderInfo['OCCUR_TIME']
-        dictTrInfo['STRATEGY_CLASS'] = self.strStrategyClass
-        dictTrInfo['TR_NUMBER'] = strTRnum
-        dictTrInfo['STRATEGY_ID'] = orderInfo['STRATEGY_NAME']
-        dictTrInfo['ASSET_CLASS'] = orderInfo['ASSET_CLASS']
-        dictTrInfo['ASSET_NAME'] = orderInfo['ASSET_NAME']
-        dictTrInfo['ASSET_TYPE'] = orderInfo['ASSET_TYPE']
-        dictTrInfo['MATURITY'] = orderInfo['MATURITY']
-        dictTrInfo['UNDERLYING_ID'] = orderInfo['UNDERLYING_ID']
-        dictTrInfo['SETTLE_CURNCY'] = self.strSettleCrncy
-        q = orderInfo['QUANTITY']
-        dictTrInfo['TR_DIRECTION'] = int(q / abs(q))
-        dictTrInfo['TR_AMOUNT'] = q
-        dictTrInfo['TR_PRICE'] = orderInfo['SETTLE_PRICE']
-        dictTrInfo['TR_COST'] = 0
-        dictTrInfo['FUND_CODE'] = self.strAcntCode
+            dictTrInfo = {}
+            dictTrInfo['BASE_DATETIME'] = self.dtToday + ' ' + i['OCCUR_TIME']
+            dictTrInfo['STRATEGY_CLASS'] = self.strStrategyClass
+            dictTrInfo['TR_NUMBER'] = strTRnum
+            dictTrInfo['STRATEGY_ID'] = i['STRATEGY_NAME']
+            dictTrInfo['ASSET_CLASS'] = i['ASSET_CLASS']
+            dictTrInfo['ASSET_NAME'] = i['ASSET_NAME']
+            dictTrInfo['ASSET_TYPE'] = i['ASSET_TYPE']
+            dictTrInfo['MATURITY'] = i['MATURITY']
+            dictTrInfo['UNDERLYING_ID'] = i['UNDERLYING_ID']
+            dictTrInfo['SETTLE_CURNCY'] = self.strSettleCrncy
+            q = i['QUANTITY']
+            dictTrInfo['TR_DIRECTION'] = int(q / abs(q))
+            dictTrInfo['TR_AMOUNT'] = q
+            dictTrInfo['TR_PRICE'] = i['SETTLE_PRICE']
+            dictTrInfo['TR_COST'] = 0
+            dictTrInfo['FUND_CODE'] = self.strAcntCode
 
-        # strQuery = "INSERT INTO transactions VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        strQuery = "INSERT INTO transactions VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12, :13, :14, :15)"
-        Strategy.instDB.executemany(strQuery, list(dictTrInfo.values()))
-        Strategy.instDB.commit()
-        
-        # 입력값 확인
-        strQuery = f"SELECT * FROM transactions WHERE tr_number='{strTRnum}'"
-        print(Strategy.instDB.query_to_df(strQuery, 1))
+            # strQuery = "INSERT INTO transactions VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            strQuery = "INSERT INTO transactions VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12, :13, :14, :15)"
+            Strategy.instDB.executemany(strQuery, list(dictTrInfo.values()))
+            Strategy.instDB.commit()
+            
+            # 입력값 확인
+            strQuery = f"SELECT * FROM transactions WHERE tr_number='{strTRnum}'"
+            print(Strategy.instDB.query_to_df(strQuery, 1))
 
 
     # 이하 출력부분
@@ -327,22 +343,24 @@ class Interface():
         for i in DATA:
             nRowCnt = self.wndIndi.twBalanceInfo.rowCount()
             self.wndIndi.twBalanceInfo.insertRow(nRowCnt)
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 0, QTableWidgetItem('종목코드'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 1, QTableWidgetItem('종목명'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 2, QTableWidgetItem('매수매도구분'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 3, QTableWidgetItem('당일잔고'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 3, QTableWidgetItem('청산가능수량'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 4, QTableWidgetItem('평균단가'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 5, QTableWidgetItem('미체결수량'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 6, QTableWidgetItem('평가손익'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 7, QTableWidgetItem('수수료'))
-            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 8, QTableWidgetItem('세금'))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 0, QTableWidgetItem(DATA['종목코드']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 1, QTableWidgetItem(DATA['종목명']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 2, QTableWidgetItem(DATA['매수매도구분']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 3, QTableWidgetItem(DATA['당일잔고']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 3, QTableWidgetItem(DATA['청산가능수량']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 4, QTableWidgetItem(DATA['평균단가']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 5, QTableWidgetItem(DATA['미체결수량']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 6, QTableWidgetItem(DATA['평가손익']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 7, QTableWidgetItem(DATA['수수료']))
+            self.wndIndi.twBalanceInfo.setItem(nRowCnt, 8, QTableWidgetItem(DATA['세금']))
 
         self.wndIndi.twBalanceInfo.resizeColumnsToContents()
 
 
-    def setTwOrderInfoUI(self, DATA=None):
-        if DATA == None:
+    # def setTwOrderInfoUI(self, DATA=None):
+    def setTwOrderInfoUI(self):
+        # if DATA == None:
+        if len(Strategy.lstOrderInfo) > 0:
             for i in Strategy.lstOrderInfo: # 전략별 주문 요청 내역
                 if i['QUANTITY'] > 0:
                     d = '매수'
@@ -357,21 +375,30 @@ class Interface():
                 self.wndIndi.twOrderInfo.setItem(nRowCnt, 4, QTableWidgetItem(d))
                 self.wndIndi.twOrderInfo.setItem(nRowCnt, 5, QTableWidgetItem(str(abs(i['QUANTITY']))))
                 self.wndIndi.twOrderInfo.setItem(nRowCnt, 6, QTableWidgetItem(str(i['ORDER_PRICE'])))
-        else:
+            # else:
+        if len(Strategy.lstOrderInfo_Net) > 0:
             for i in Strategy.lstOrderInfo_Net: # 실주문 내역
-                if i['QUANTITY'] > 0:
-                    d = '매수'
-                elif i['QUANTITY'] < 0:
-                    d = '매도'
-                nRowCnt = self.wndIndi.twSettleInfo.rowCount()
-                self.wndIndi.twOrderInfo.insertRow(nRowCnt)
-                self.wndIndi.twOrderInfo.setItem(nRowCnt, 0, QTableWidgetItem('주문'))
-                self.wndIndi.twOrderInfo.setItem(nRowCnt, 1, QTableWidgetItem(str(i['OCCUR_TIME'])))
-                self.wndIndi.twOrderInfo.setItem(nRowCnt, 2, QTableWidgetItem(DATA['주문번호']))
-                self.wndIndi.twOrderInfo.setItem(nRowCnt, 3, QTableWidgetItem(i['PRODUCT_CODE']))
-                self.wndIndi.twOrderInfo.setItem(nRowCnt, 4, QTableWidgetItem(d))
-                self.wndIndi.twOrderInfo.setItem(nRowCnt, 5, QTableWidgetItem(str(abs(i['QUANTITY']))))
-                self.wndIndi.twOrderInfo.setItem(nRowCnt, 6, QTableWidgetItem(''))
+                if i['QUANTITY'] != 0:
+                    if i['QUANTITY'] > 0:
+                        d = '매수'
+                    elif i['QUANTITY'] < 0:
+                        d = '매도'
+                    nRowCnt = self.wndIndi.twOrderInfo.rowCount()
+                    self.wndIndi.twOrderInfo.insertRow(nRowCnt)
+                    self.wndIndi.twOrderInfo.setItem(nRowCnt, 0, QTableWidgetItem('주문'))
+                    self.wndIndi.twOrderInfo.setItem(nRowCnt, 1, QTableWidgetItem(str(i['OCCUR_TIME'])))
+                    # self.wndIndi.twOrderInfo.setItem(nRowCnt, 2, QTableWidgetItem(DATA['주문번호']))
+                    # self.wndIndi.twOrderInfo.setItem(nRowCnt, 2, QTableWidgetItem(i['STRATEGY_NAME']))
+                    self.wndIndi.twOrderInfo.setItem(nRowCnt, 3, QTableWidgetItem(i['PRODUCT_CODE']))
+                    self.wndIndi.twOrderInfo.setItem(nRowCnt, 4, QTableWidgetItem(d))
+                    self.wndIndi.twOrderInfo.setItem(nRowCnt, 5, QTableWidgetItem(str(abs(i['QUANTITY']))))
+                    self.wndIndi.twOrderInfo.setItem(nRowCnt, 6, QTableWidgetItem(str(i['PRICE'])))
+
+            # orderNo = DATA['주문번호']
+            # Strategy.dictOrderInfo_All[orderNo] = Strategy.lstOrderInfo.copy()
+            # Strategy.dictOrderInfo_Net_All[orderNo] = Strategy.lstOrderInfo_Net.copy()
+            # Strategy.lstOrderInfo = []  # 주문내역 초기화
+            # Strategy.lstOrderInfo_Net = []
                 
         self.wndIndi.twOrderInfo.resizeColumnsToContents()
 
@@ -380,17 +407,17 @@ class Interface():
         for i in DATA:
             nRowCnt = self.wndIndi.twSettleInfo.rowCount()
             self.wndIndi.twSettleInfo.insertRow(nRowCnt)
-            self.wndIndi.twSettleInfo.setItem(nRowCnt, 0, QTableWidgetItem('체결'))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 0, QTableWidgetItem(i['주문번호']))
             self.wndIndi.twSettleInfo.setItem(nRowCnt, 1, QTableWidgetItem(i['체결시간']))
-            self.wndIndi.twSettleInfo.setItem(nRowCnt, 2, QTableWidgetItem(i['주문번호']))
-            self.wndIndi.twSettleInfo.setItem(nRowCnt, 3, QTableWidgetItem(i['종목코드']))
-            if i['매매구분'] == '01':
-                d = '매도'
-            elif i['매매구분'] == '02':
-                d = '매수'
-            self.wndIndi.twSettleInfo.setItem(nRowCnt, 4, QTableWidgetItem(d))
-            self.wndIndi.twSettleInfo.setItem(nRowCnt, 5, QTableWidgetItem(i['체결수량']))
-            self.wndIndi.twSettleInfo.setItem(nRowCnt, 6, QTableWidgetItem(i['체결단가']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 2, QTableWidgetItem(i['종목코드']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 3, QTableWidgetItem(i['종목명']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 4, QTableWidgetItem(i['매매구분']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 5, QTableWidgetItem(i['주문구분']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 6, QTableWidgetItem(i['주문수량']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 7, QTableWidgetItem(i['주문단가']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 8, QTableWidgetItem(i['체결수량']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 9, QTableWidgetItem(i['미체결수량']))
+            self.wndIndi.twSettleInfo.setItem(nRowCnt, 10, QTableWidgetItem(i['체결단가']))
 
         self.wndIndi.twSettleInfo.resizeColumnsToContents()
 

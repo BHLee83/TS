@@ -3,8 +3,6 @@
 #   Long: 12시 이전에 시초가에서 5ATR만큼 상승 / Short: 12시 이전에 시초가에서 5ATR만큼 하락
 # - Exit
 #   당일종가청산
-# 수수료: 0.006%
-# 슬리피지: 0.05pt
 
 from System.strategy import Strategy
 
@@ -53,9 +51,11 @@ class TS_RB_0014():
     def createHistData(self, instInterface):
         # for i, v in enumerate(self.lstProductNCode):
         for i, v in enumerate(self.lstProductCode):
-            if Strategy.getHistData(v, self.lstTimeFrame[i]) == False:
-                instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
-                instInterface.event_loop.exec_()
+            data = Strategy.getHistData(v, self.lstTimeFrame[i])
+            if type(data) == bool:
+                if data == False:
+                    instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
+                    instInterface.event_loop.exec_()
 
 
     # 과거 데이터 로드
@@ -134,7 +134,6 @@ class TS_RB_0014():
         else:
             if self.npPriceInfo == None:    # 첫 데이터 수신시
                 self.fDayOpen = PriceInfo['시가']
-                Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', 1, 0)    # test
             else:
                 if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
                     (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):    # 분봉 업데이트 시

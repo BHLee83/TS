@@ -46,6 +46,10 @@ class Strategy(metaclass=SingletonMeta):
     
     lstOrderInfo = []
     lstOrderInfo_Net = []
+    dictOrderInfo = {}
+    dictOrderInfo_Net = {}
+    dictOrderInfo_Rcv = {}
+    nOrderCnt = 0
 
     dfOrderInfo_All = pd.DataFrame(None)
 
@@ -137,35 +141,36 @@ class Strategy(metaclass=SingletonMeta):
 
 
     def setOrder(objStrategy, productCode:str, direction:str, qty:int, price:float):
-        direction = direction.upper()
-        if direction == 'B' or direction == 'BUY' or direction == 'LONG' or direction == 'EXITSHORT':
-            d = 1
-        elif direction == 'S' or direction == 'SELL' or direction == 'SHORT' or direction == 'EXITLONG':
-            d = -1
+        if qty != 0:
+            direction = direction.upper()
+            if direction == 'B' or direction == 'BUY' or direction == 'LONG' or direction == 'EXITSHORT':
+                d = 1
+            elif direction == 'S' or direction == 'SELL' or direction == 'SHORT' or direction == 'EXITLONG':
+                d = -1
 
-        if price == 0:
-            order_type = 'M'    # 시장가
-        else:
-            order_type = 'L'    # 지정가
+            if price == 0:
+                order_type = 'M'    # 시장가
+            else:
+                order_type = 'L'    # 지정가
 
-        dictOrderInfo = {}
-        dictOrderInfo['OCCUR_TIME'] = dt.datetime.now().time()
-        dictOrderInfo['STRATEGY_OBJECT'] = objStrategy
-        dictOrderInfo['STRATEGY_NAME'] = objStrategy.dfInfo['NAME']
-        dictOrderInfo['PRODUCT_CODE'] = productCode
-        dictOrderInfo['UNDERLYING_ID'] = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==productCode].values[0]
-        dictOrderInfo['ASSET_CODE'] = Strategy.dfProductInfo['ASSET_CODE'][Strategy.dfProductInfo['UNDERLYING_ID']==dictOrderInfo['UNDERLYING_ID']].values[0]
-        dictOrderInfo['ASSET_CLASS'] = Strategy.dfProductInfo['ASSET_CLASS'][Strategy.dfProductInfo['ASSET_CODE']==dictOrderInfo['ASSET_CODE']].values[0]
-        dictOrderInfo['ASSET_NAME'] = Strategy.dfProductInfo['ASSET_NAME'][Strategy.dfProductInfo['ASSET_CODE']==dictOrderInfo['ASSET_CODE']].values[0]
-        dictOrderInfo['ASSET_TYPE'] = Strategy.dfProductInfo['ASSET_TYPE'][Strategy.dfProductInfo['ASSET_CODE']==dictOrderInfo['ASSET_CODE']].values[0]
-        dictOrderInfo['MATURITY_DATE'] = Strategy.dfCFutMst['최종거래일'][Strategy.dfCFutMst['단축코드']==productCode].values[0]
-        dictOrderInfo['MATURITY'] = dictOrderInfo['MATURITY_DATE'][2:6]
-        dictOrderInfo['QUANTITY'] = qty * d
-        # 일단은 order_type 고려하지 않음 (때문에 price도 고려대상 X)
-        dictOrderInfo['ORDER_TYPE'] = order_type
-        dictOrderInfo['ORDER_PRICE'] = price
+            dictOrderInfo = {}
+            dictOrderInfo['OCCUR_TIME'] = dt.datetime.now().time()
+            dictOrderInfo['STRATEGY_OBJECT'] = objStrategy
+            dictOrderInfo['STRATEGY_NAME'] = objStrategy.dfInfo['NAME']
+            dictOrderInfo['PRODUCT_CODE'] = productCode
+            dictOrderInfo['UNDERLYING_ID'] = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==productCode].values[0]
+            dictOrderInfo['ASSET_CODE'] = Strategy.dfProductInfo['ASSET_CODE'][Strategy.dfProductInfo['UNDERLYING_ID']==dictOrderInfo['UNDERLYING_ID']].values[0]
+            dictOrderInfo['ASSET_CLASS'] = Strategy.dfProductInfo['ASSET_CLASS'][Strategy.dfProductInfo['ASSET_CODE']==dictOrderInfo['ASSET_CODE']].values[0]
+            dictOrderInfo['ASSET_NAME'] = Strategy.dfProductInfo['ASSET_NAME'][Strategy.dfProductInfo['ASSET_CODE']==dictOrderInfo['ASSET_CODE']].values[0]
+            dictOrderInfo['ASSET_TYPE'] = Strategy.dfProductInfo['ASSET_TYPE'][Strategy.dfProductInfo['ASSET_CODE']==dictOrderInfo['ASSET_CODE']].values[0]
+            dictOrderInfo['MATURITY_DATE'] = Strategy.dfCFutMst['최종거래일'][Strategy.dfCFutMst['단축코드']==productCode].values[0]
+            dictOrderInfo['MATURITY'] = dictOrderInfo['MATURITY_DATE'][2:6]
+            dictOrderInfo['QUANTITY'] = qty * d
+            # 일단은 order_type 고려하지 않음 (때문에 price도 고려대상 X)
+            dictOrderInfo['ORDER_TYPE'] = order_type
+            dictOrderInfo['ORDER_PRICE'] = price
 
-        Strategy.lstOrderInfo.append(dictOrderInfo)
+            Strategy.lstOrderInfo.append(dictOrderInfo)
 
 
     def executeOrder(interface, PriceInfo):
@@ -178,23 +183,25 @@ class Strategy(metaclass=SingletonMeta):
                 continue
             if PriceInfo == None:
                 if i['QUANTITY'] > 0:
+                    i['PRICE'] = 0
                     direction = '02'
                 elif i['QUANTITY'] < 0:
+                    i['PRICE'] = 0
                     direction = '01'
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], 'M')
-                ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), 0, direction, 'M')
+                ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction, 'M')
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
             else:
                 if i['QUANTITY'] > 0: # FIXME: 일단 현재가로 주문 (실거래시 상대호가 등으로 바꿀것)
-                    price = PriceInfo['현재가']
+                    i['PRICE'] = PriceInfo['현재가']
                     direction = '02'
                 elif i['QUANTITY'] < 0:
-                    price = PriceInfo['현재가']
+                    i['PRICE'] = PriceInfo['현재가']
                     direction = '01'
-                logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], price)
-                ret = interface.objOrder.order(interface, acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), price, direction)
+                logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], i['PRICE'])
+                ret = interface.objOrder.order(interface, acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction)
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
@@ -251,7 +258,7 @@ class Strategy(metaclass=SingletonMeta):
                     Strategy.lstMktData.append(dictData)
             
 
-    def getHistData(productCode, period) -> np.ndarray or bool:
+    def getHistData(productCode, period):
         for i in Strategy.lstMktData:
             if (i['PRODUCT_CODE'] == productCode) and (i['PERIOD'] == period):
                 return i['VALUES']

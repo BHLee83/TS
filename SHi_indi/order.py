@@ -94,9 +94,10 @@ class Order():
                 # print("매수 및 매도 주문결과 :", DATA)
                 logging.info('주문 접수: %s', DATA)
                 # self.instInterface.objOrder.iqrySettle(self.instInterface.strAcntCode, self.instInterface.dfAcntInfo['Acnt_Pwd'][0], self.instInterface.strToday)   # 체결/미체결 조회
-                self.instInterface.setTwOrderInfoUI(DATA)
+                # self.instInterface.setTwOrderInfoUI(DATA)
+                Strategy.dictOrderInfo_Rcv[DATA['주문번호']] = None
             
-            # self.instInterface.event_loop.exit()
+            self.instInterface.event_loop.exit()
 
         elif TRName == "SABC258Q1":
             DATA = {}

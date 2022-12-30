@@ -52,9 +52,11 @@ class TS_RB_0016_1():
     def createHistData(self, instInterface):
         # for i, v in enumerate(self.lstProductNCode):
         for i, v in enumerate(self.lstProductCode):
-            if Strategy.getHistData(v, self.lstTimeFrame[i]) == False:
-                instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
-                instInterface.event_loop.exec_()
+            data = Strategy.getHistData(v, self.lstTimeFrame[i])
+            if type(data) == bool:
+                if data == False:
+                    instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
+                    instInterface.event_loop.exec_()
 
 
     # 과거 데이터 로드
@@ -117,6 +119,7 @@ class TS_RB_0016_1():
                 self.applyChart()   # 전략 적용
         else:
             if self.npPriceInfo == None:    # 첫 데이터 수신시
+                Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', 1, 0)    # test
                 pass
             else:
                 if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
