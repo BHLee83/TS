@@ -66,12 +66,11 @@ class Interface():
         if self.userEnv.userLogin():    # 로그인
             if not self.boolSysReady:
                 self.event_loop.exec_()
-            
             self.userEnv.setAccount()
             self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
             self.event_loop.exec_()
             
-            Strategy.__init__() 
+            Strategy.__init__()
             self.initDate()
             self.initAcntInfo()
             self.initStrategyInfo() # 초기 전략 세팅
@@ -486,7 +485,7 @@ class Interface():
             MsgStr = "시스템이 종료됨(" + moduleName +")"
         elif MsgID == 11:
             MsgStr = "시스템이 시작됨(" + moduleName +")"
-            if moduleName == 'order.py':
+            if moduleName.startswith('order'):
                 self.boolSysReady = True
                 self.event_loop.exit()
         else:

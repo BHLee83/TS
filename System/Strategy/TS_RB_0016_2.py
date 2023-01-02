@@ -57,9 +57,11 @@ class TS_RB_0016_2():
     def createHistData(self, instInterface):
         # for i, v in enumerate(self.lstProductNCode):
         for i, v in enumerate(self.lstProductCode):
-            if Strategy.getHistData(v, self.lstTimeFrame[i]) == False:
-                instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
-                instInterface.event_loop.exec_()
+            data = Strategy.getHistData(v, self.lstTimeFrame[i])
+            if type(data) == bool:
+                if data == False:
+                    instInterface.price.rqHistData(v, self.lstTimeWnd[i], self.lstTimeIntrvl[i], Strategy.strStartDate, Strategy.strEndDate, Strategy.strRqCnt)
+                    instInterface.event_loop.exec_()
 
 
     # 과거 데이터 로드

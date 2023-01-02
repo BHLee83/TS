@@ -1,6 +1,5 @@
 from PyQt5.QAxContainer import *
 import numpy as np
-import pandas as pd
 # from System.strategyRT import StrategyRT
 
 
