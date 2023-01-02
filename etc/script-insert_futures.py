@@ -1,21 +1,16 @@
-import sys
 import numpy as np
 import pandas as pd
 import datetime as dt
 
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QAxContainer import *
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtWidgets import QPushButton
-from PyQt5.QtWidgets import QLineEdit
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtCore import QEventLoop, Qt
+from PyQt5.QAxContainer import QAxWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLineEdit, QMessageBox
 
-import sys
-from os import path
-wd = path.dirname( path.abspath(__file__) )
-sys.path.append(wd)
+# import sys
+# from os import path
+# wd = path.dirname( path.dirname( path.abspath(__file__) ) )
+# sys.path.append(wd)
 from DB.dbconn import oracleDB
 from SHi_indi.config import Config
 
