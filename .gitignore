@@ -7,3 +7,8 @@
 /build/          # 파이썬 프로젝트 빌드에 사용 된 파일이 저장 된 폴더
 /.idea/          # PyCharm으로 소스코드 작성하면 생성되는 폴더
 *.DS_Store*      # MacOS에서 해당 폴더의 메타 데이터를 정의한 파일 (Desktop Services Store)
+build
+dist
+Log
+*.pyc
+config.*

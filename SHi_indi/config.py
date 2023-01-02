@@ -3,5 +3,6 @@ class Config():
         'id': 'forheart',
         'password': 'mh810312^^',
         'authpassword': '#qudghk8931#',
-        'indipath': 'C:\SHINHAN-i\indi\giexpertstarter.exe'
+        'indipath': 'C:\SHINHAN-i\indi\giexpertstarter.exe',
+        'acntpwd': '8931'
     }
