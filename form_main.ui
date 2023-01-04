@@ -105,11 +105,11 @@
     <attribute name="horizontalHeaderVisible">
      <bool>true</bool>
     </attribute>
-    <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>69</number>
-    </attribute>
     <attribute name="horizontalHeaderMinimumSectionSize">
      <number>34</number>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>69</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>true</bool>
@@ -118,56 +118,35 @@
      <property name="text">
       <string>체결시간</string>
      </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
-     </property>
     </column>
     <column>
      <property name="text">
       <string>시가</string>
-     </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
      </property>
     </column>
     <column>
      <property name="text">
       <string>고가</string>
      </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
-     </property>
     </column>
     <column>
      <property name="text">
       <string>저가</string>
-     </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
      </property>
     </column>
     <column>
      <property name="text">
       <string>현재가</string>
      </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
-     </property>
     </column>
     <column>
      <property name="text">
       <string>단위체결량</string>
      </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
-     </property>
     </column>
     <column>
      <property name="text">
       <string>누적거래량</string>
-     </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
      </property>
     </column>
    </widget>
@@ -262,16 +241,10 @@
      <property name="text">
       <string>실행</string>
      </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
-     </property>
     </column>
     <column>
      <property name="text">
       <string>시계열</string>
-     </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
      </property>
     </column>
     <column>
@@ -531,32 +504,20 @@
      <property name="text">
       <string>전략명</string>
      </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
-     </property>
     </column>
     <column>
      <property name="text">
       <string>자산명</string>
-     </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
      </property>
     </column>
     <column>
      <property name="text">
       <string>자산구분</string>
      </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
-     </property>
     </column>
     <column>
      <property name="text">
       <string>포지션</string>
-     </property>
-     <property name="textAlignment">
-      <set>AlignCenter</set>
      </property>
     </column>
    </widget>
@@ -570,7 +531,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>전략별 포지션(T-1)</string>
+     <string>전략별 포지션</string>
     </property>
    </widget>
   </widget>
@@ -580,7 +541,7 @@
      <x>0</x>
      <y>0</y>
      <width>801</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
