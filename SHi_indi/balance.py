@@ -25,13 +25,13 @@ class Balance():
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, pwd)  # 비밀번호
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, type)  # 구분(0: 전체, 1:강세불리, 2:약세불리)
         ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, product)  # 상품군 (0: 전체(상품선물), 1:지수 TOBE 1:선물, 2:옵션)
-        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, avgCode)  # 평균가구분코드
+        ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, avgCode)  # 평균가구분코드
         rqid = self.IndiTR.dynamicCall("RequestData()")  # 데이터 요청
         self.rqidD[rqid] = "SABC967Q1"
 
     
     def startBalanceRT(self, acnt_num):
-        '선물/옵션 주문체결 실시간'
+        '선물/옵션 잔고 실시간'
         if self.strCurrentAcnt != acnt_num:
             self.strCurrentAcnt = acnt_num
             ret = self.IndiReal.dynamicCall("RequestRTReg(QString, QString)", "AE", self.strCurrentAcnt)
@@ -114,6 +114,7 @@ class Balance():
             DATA['이동평균 매매손익'] = self.IndiTR.dynamicCall("GetSingleData(int)", 31)
 
             self.instInterface.setTwBalanceInfoUI(DATA)
+            self.instInterface.chkPL(DATA)
 
 
     # 시스템 메시지를 받은 경우 출력

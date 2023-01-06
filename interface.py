@@ -90,8 +90,8 @@ class Interface():
 
 
     def initDate(self):
-        strQuery = 'SELECT DISTINCT base_date FROM  market_data ORDER BY base_date DESC'
-        df = self.instDB.query_to_df(strQuery, 2)
+        strQuery = 'SELECT base_date from (SELECT DISTINCT base_date FROM  market_data ORDER BY base_date DESC) WHERE ROWNUM >= 1 AND ROWNUM <= 2'
+        df = self.instDB.query_to_df(strQuery, 1)
         if df['BASE_DATE'][0].date() == self.dtToday:
             self.dtT_1 = df['BASE_DATE'][1].date()
         else:
@@ -109,8 +109,6 @@ class Interface():
             self.event_loop.exec_()
         self.strAcntCode = self.wndIndi.cbAcntCode.currentText()
         self.dfAcntInfo = self.userEnv.getAccount(self.strAcntCode)
-
-        self.objBalance.rqBalance(self.strAcntCode, self.dfAcntInfo['Acnt_Pwd'][0])
 
 
     def initStrategyInfo(self):
@@ -235,9 +233,26 @@ class Interface():
             Strategy.lstOrderInfo_Net.clear()
             Strategy.nOrderCnt += 1
 
+            if Strategy.nOrderCnt == 1: # 최초 주문후
+                self.objBalance.rqBalance(self.strAcntCode, self.dfAcntInfo['Acnt_Pwd'][0]) # 최초 TR요청(1회)
+
             self.objOrder.startSettleRT(self.strAcntCode)  # 실시간 체결 수신
             self.objBalance.startBalanceRT(self.strAcntCode)    # 실시간 잔고 요청
             
+
+    # Realtime PL check!
+    def chkPL(self, DATA):
+        if DATA['종목코드'] != '':
+            strUnder_ID = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==DATA['종목코드']].values[0]
+            threadshold = Strategy.dfProductInfo['threadshold_loss'][Strategy.dfProductInfo['UNDERLYING_ID']==strUnder_ID].values[0]
+            if float(DATA['평가손익']) < threadshold:
+                d = int(DATA['매수매도구분']) * 2 - 3
+                if d == 1:
+                    Strategy.setOrder('LossCut', DATA['종목코드'], 'S', int(DATA['청산가능수량']), 0)
+                elif d == -1:
+                    Strategy.setOrder('LossCut', DATA['종목코드'], 'B', int(DATA['청산가능수량']), 0)
+                self.orderStrategy()
+
 
     # 실시간 체결정보 확인
     def setSettleInfo(self, DATA):

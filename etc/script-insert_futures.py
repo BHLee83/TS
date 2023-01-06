@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 import datetime as dt
@@ -7,10 +8,9 @@ from PyQt5.QtCore import QEventLoop, Qt
 from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLineEdit, QMessageBox
 
-# import sys
-# from os import path
-# wd = path.dirname( path.dirname( path.abspath(__file__) ) )
-# sys.path.append(wd)
+from os import path
+wd = path.dirname( path.dirname( path.abspath(__file__) ) )
+sys.path.append(wd)
 from DB.dbconn import oracleDB
 from SHi_indi.config import Config
 

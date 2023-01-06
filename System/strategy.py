@@ -140,7 +140,7 @@ class Strategy(metaclass=SingletonMeta):
             return False
 
 
-    def setOrder(objStrategy, productCode:str, direction:str, qty:int, price:float):
+    def setOrder(strategyName:str, productCode:str, direction:str, qty:int, price:float):
         if qty != 0:
             direction = direction.upper()
             if direction == 'B' or direction == 'BUY' or direction == 'LONG' or direction == 'EXITSHORT':
@@ -155,8 +155,7 @@ class Strategy(metaclass=SingletonMeta):
 
             dictOrderInfo = {}
             dictOrderInfo['OCCUR_TIME'] = dt.datetime.now().time()
-            dictOrderInfo['STRATEGY_OBJECT'] = objStrategy
-            dictOrderInfo['STRATEGY_NAME'] = objStrategy.dfInfo['NAME']
+            dictOrderInfo['STRATEGY_NAME'] = strategyName
             dictOrderInfo['PRODUCT_CODE'] = productCode
             dictOrderInfo['UNDERLYING_ID'] = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==productCode].values[0]
             dictOrderInfo['ASSET_CODE'] = Strategy.dfProductInfo['ASSET_CODE'][Strategy.dfProductInfo['UNDERLYING_ID']==dictOrderInfo['UNDERLYING_ID']].values[0]

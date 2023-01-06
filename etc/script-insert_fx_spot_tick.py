@@ -9,7 +9,7 @@ from DB.dbconn import oracleDB
 
 
 # Raw data
-f = '20230102'
+f = '20230105'
 df = pd.read_csv('C:/Infomax/bin/usr/scinfo/local/Data/' + f + '.csv', encoding='euc-kr')
 df.sort_index(axis=0, ascending=False, inplace=True)
 df.reset_index(inplace=True)

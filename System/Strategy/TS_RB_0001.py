@@ -104,10 +104,10 @@ class TS_RB_0001():
                     df = self.lstData[self.ix]
                     if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
                         if df['MP'][1] == 1:
-                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
+                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
                             df.loc[0, 'MP'] = 1
                             self.logger.info('Buy %s amount ordered', self.amt)
                         if df['MP'][1] == -1:
-                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt, 0)
+                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt, 0)
                             df.loc[0, 'MP'] = -1
                             self.logger.info('Sell %s amount ordered', self.amt)

@@ -114,19 +114,19 @@ class TS_RB_0008():
                     if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
                         # Entry
                         if df['MP'][1] == 1:
-                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, 0)   # 상품코드, 매수/매도, 계약수, 가격
+                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_entry, 0)   # 상품코드, 매수/매도, 계약수, 가격
                             df.loc[0, 'MP'] = 1
                             self.logger.info('Buy %s amount ordered', self.amt_entry)
                         if df['MP'][1] == -1:
-                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, 0)
+                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_entry, 0)
                             df.loc[0, 'MP'] = -1
                             self.logger.info('Sell %s amount ordered', self.amt_entry)
                         # Exit
                         if df['MP'][1] == 0:
                             if df['MP'][2] == -1:
-                                Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, 0)
+                                Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_exit, 0)
                                 self.logger.info('ExitShort %s amount ordered', self.amt_exit)
                             if df['MP'][2] == 1:
-                                Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, 0)
+                                Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_exit, 0)
                                 self.logger.info('ExitLong %s amount ordered', self.amt_exit)
                             df.loc[0, 'MP'] = 0

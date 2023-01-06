@@ -217,23 +217,23 @@ class TS_RB_0011():
                 if PriceInfo['현재가'] == PriceInfo['시가']:
                     if (df['MP'][0] != 1) and (self.nBuyCond == 1): # Entry
                         if PriceInfo['현재가'] >= df['고가'][1]:
-                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 시초가 매수
+                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 시초가 매수
                             df.loc[0, 'MP'] = 1
                             self.logger.info('Buy %s amount ordered', self.amt_entry)
                     if (df['MP'][0] != -1) and (self.nSellCond == -1):
                         if PriceInfo['현재가'] <= df['저가'][1]:
-                            Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 시초가 매도
+                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 시초가 매도
                             df.loc[0, 'MP'] = -1
                             self.logger.info('Sell %s amount ordered', self.amt_entry)
             else:
                 if (df['MP'][0] != 1) and (self.nBuyCond == 1): # Entry
                     if (self.npPriceInfo['현재가'] < df['고가'][1]) and (PriceInfo['현재가'] >= df['고가'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
                         df.loc[0, 'MP'] = 1
                         self.logger.info('Buy %s amount ordered', self.amt_entry)
                 if (df['MP'][0] != -1) and (self.nSellCond == -1):
                     if (self.npPriceInfo['현재가'] > df['저가'][1]) and (PriceInfo['현재가'] <= df['저가'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
                         df.loc[0, 'MP'] = -1
                         self.logger.info('Sell %s amount ordered', self.amt_entry)
 
@@ -289,23 +289,23 @@ class TS_RB_0011():
                 if (df['MP'][1] == -1) and (PriceInfo['고가'] < self.dHighStop):
                     df.loc[0, 'ES'] = self.dHighStop
                 if (df['MP'][1] == 1) and (self.npPriceInfo['현재가'] > df['EL'][0]) and (PriceInfo['현재가'] <= df['EL'][0]):
-                    Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])   # 매수 청산
+                    Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])   # 매수 청산
                     df.loc[0, 'MP'] = 0
                     self.logger.info('ExitLong %s amount ordered', self.amt_exit)
                 if (df['MP'][1] == -1) and (self.npPriceInfo['현재가'] < df['ES'][0]) and (PriceInfo['현재가'] >= df['ES'][0]):
-                    Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])   # 매도 청산
+                    Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])   # 매도 청산
                     df.loc[0, 'MP'] = 0
                     self.logger.info('ExitShort %s amount ordered', self.amt_exit)
 
                 # Stop loss
                 if df['MP'][1] == 1:
                     if (self.npPriceInfo['현재가'] > df['SL'][1]) and (PriceInfo['현재가'] <= df['SL'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])   # 매수 청산
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_exit, PriceInfo['현재가'])   # 매수 청산
                         df.loc[0, 'MP'] = 0
                         self.logger.info('StopLong %s amount ordered', self.amt_exit)
                 if df['MP'][1] == -1:
                     if (self.npPriceInfo['현재가'] < df['SL'][1]) and (PriceInfo['현재가'] >= df['SL'][1]):
-                        Strategy.setOrder(self, self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])   # 매도 청산
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_exit, PriceInfo['현재가'])   # 매도 청산
                         df.loc[0, 'MP'] = 0
                         self.logger.info('StopShort %s amount ordered', self.amt_exit)
 
