@@ -69,7 +69,7 @@ class Price():
         TRName = self.rqidD[rqid]
         
         # 상품선물종목코드 수신(전종목)
-        if TRName == "cfut_mst" :
+        if TRName == self.instInterface.strTR_MST:
             # multi row 개수를 리턴
             nCnt = self.IndiTR.dynamicCall("GetMultiRowCount()")
             for i in range(0, nCnt):

@@ -1,6 +1,6 @@
 import sys
 import os
-# from PyQt5.QtGui import *
+from PyQt5.QtGui import QCloseEvent
 # from PyQt5.QtCore import *
 # from PyQt5.QAxContainer import *
 from PyQt5 import uic
@@ -20,6 +20,11 @@ class IndiWindow(QMainWindow, form_class):
         super().__init__()
         self.setupUi(self)
         self.instInterface = Interface(self)
+
+
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        self.instInterface.inputPos2DB()
+        return super().closeEvent(a0)
 
     
 if __name__ == "__main__":

@@ -40,6 +40,7 @@ class Interface():
         self.strT_1 = ''
 
         # Local settings
+        self.strTR_MST = 'cfut_mst'
         self.lstChkBox = []
         self.lstObj_Strategy = []
         self.strAcntCode = ''
@@ -67,8 +68,9 @@ class Interface():
         if self.userEnv.userLogin():    # 로그인
             if not self.boolSysReady:
                 self.event_loop.exec_()
+
             self.userEnv.setAccount()
-            self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
+            self.price.rqProductMstInfo(self.strTR_MST) # 상품선물 전종목 정보 (-> setNearMonth)
             self.event_loop.exec_()
             
             Strategy.__init__()
@@ -115,7 +117,7 @@ class Interface():
         self.wndIndi.twStrategyInfo.setRowCount(0)  # 기존 내용 삭제
         self.lstChkBox = []
         if self.wndIndi.cbProductCode.currentText() == '':
-            self.price.rqProductMstInfo("cfut_mst") # 상품선물 전종목 정보 (-> setNearMonth)
+            self.price.rqProductMstInfo(self.strTR_MST) # 상품선물 전종목 정보 (-> setNearMonth)
             self.event_loop.exec_()
         self.strProductCode = self.wndIndi.cbProductCode.currentText()
         Strategy.setStrategyInfo(self.strProductCode)
@@ -126,6 +128,7 @@ class Interface():
                 self.lstChkBox[i].toggled.connect(self.chkbox_toggled)
             self.setTwStrategyInfoUI()  # 전략 세팅값 확인(UI)
             self.initPosition()
+        self.initBalance()
 
 
     def chkbox_toggled(self):
@@ -149,21 +152,36 @@ class Interface():
                 tmp = i.split(',')
                 for j in tmp:
                     lstAssetCode.append(j.strip())
-            strAssetCode = str(set(lstAssetCode))
-            strAssetCode = strAssetCode.replace('{', '(')
-            strAssetCode = strAssetCode.replace('}', ')')
-            strQuery = f"SELECT position.*, pos_direction*pos_amount AS position FROM position WHERE base_date = '{self.dtT_1}' AND asset_code IN {strAssetCode}"
+            assetCode = str(tuple(set(lstAssetCode)))
+            assetCode = assetCode.split(',)')[0].split(')')[0] + ')'
+            # O/N 포지션 조회
+            strQuery = f"SELECT position.*, pos_direction*pos_amount AS position FROM position WHERE base_date = '{self.dtT_1}' AND asset_code IN {assetCode}"
             self.dfPositionT_1 = self.instDB.query_to_df(strQuery, 100)
+            # 당일 거래내역 조회
+            lstStrategyID = Strategy.dfStrategyInfo['NAME']
+            strQuery = f"SELECT * FROM transactions WHERE base_datetime >= '{self.dtToday}' AND fund_code = {self.strAcntCode} AND strategy_id IN {tuple(lstStrategyID)} AND asset_code IN {assetCode}"
+            df = self.instDB.query_to_df(strQuery, 100)
+            
+            # TODO: O/N 포지션(self.dfPositionT_1)과 당일 거래내역(df)을 merge해서 포지션 보여줘야 함 
             if len(self.dfPositionT_1) != 0:
                 Strategy.dfPosition = self.dfPositionT_1.copy()
                 self.setTwPositionInfoUI()
 
 
+    def initBalance(self):
+        self.objBalance.rqBalance(self.strAcntCode, self.dfAcntInfo['Acnt_Pwd'].values[0])  # 현재 잔고 조회
+
+
     def pbRunStrategy(self):
+        Strategy.nOrderCnt = 0
+        # self.objBalance.startBalanceRT(self.strAcntCode)    # 실시간 잔고 요청 (작동 안됨)
+        self.timerBalance = QTimer()
+        
         self.createStrategy()   # 1. 전략 생성 & 실행(최초 1회)
         self.pbRqPrice()    # 2. 실시간 시세 수신
 
-        # self.objBalance.rqBalanceRT()   # 실시간 잔고 요청
+        self.timerBalance.start(5000)   # 5초마다 잔고조회
+        self.timerBalance.timeout.connect(self.initBalance)
 
 
     # 1. 전략 생성
@@ -208,6 +226,7 @@ class Interface():
         # logging.info('Time elapsed: %s', timedelta(seconds=end-start))
         
         self.orderStrategy(PriceInfo)    # 4. 접수된 주문 실행
+        # self.chkStop(PriceInfo) # 5. 실시간 손익 직접 계산
 
 
     def lastProc(self): # 종가 주문 등 당일 마지막 처리
@@ -234,13 +253,10 @@ class Interface():
             Strategy.nOrderCnt += 1
 
             if Strategy.nOrderCnt == 1: # 최초 주문후
-                self.objBalance.rqBalance(self.strAcntCode, self.dfAcntInfo['Acnt_Pwd'][0]) # 최초 TR요청(1회)
-
-            self.objOrder.startSettleRT(self.strAcntCode)  # 실시간 체결 수신
-            self.objBalance.startBalanceRT(self.strAcntCode)    # 실시간 잔고 요청
+                self.objOrder.startSettleRT(self.strAcntCode)  # 실시간 체결 수신
             
 
-    # Realtime PL check!
+    # Realtime PL check! (실시간 잔고 수신 안됨)
     def chkPL(self, DATA):
         if DATA['종목코드'] != '':
             strUnder_ID = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==DATA['종목코드']].values[0]
@@ -251,6 +267,37 @@ class Interface():
                     Strategy.setOrder('LossCut', DATA['종목코드'], 'S', int(DATA['청산가능수량']), 0)
                 elif d == -1:
                     Strategy.setOrder('LossCut', DATA['종목코드'], 'B', int(DATA['청산가능수량']), 0)
+                self.orderStrategy()
+
+
+    # Realtime PL check! (직접 계산)
+    def chkStop(self, PriceInfo):
+        if not Strategy.dfPosition.empty:
+            strUnder_ID = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==PriceInfo['단축코드'].decode()].values[0]
+            asset_code = Strategy.dfStrategyInfo['ASSET_CODE'][Strategy.dfStrategyInfo['UNDERLYING_ID']==strUnder_ID].values[0]
+            dfTarget = Strategy.dfPosition[Strategy.dfPosition['ASSET_CODE']==asset_code]
+            if not dfTarget.empty:
+                threadshold = Strategy.dfProductInfo['THREADSHOLD_LOSS'][Strategy.dfProductInfo['UNDERLYING_ID']==strUnder_ID].values[0]
+                pl = ((float(PriceInfo['현재가']) - np.array(dfTarget['POS_PRICE'])) * np.array(dfTarget['POSITION'])).sum()
+                if pl < threadshold:    # Loss cut
+                    q = dfTarget['POSITION'].sum()
+                    if q < 0:
+                        Strategy.setOrder('LossCut', PriceInfo['단축코드'].decode(), 'B', abs(q), 0)
+                    elif q > 0:
+                        Strategy.setOrder('LossCut', PriceInfo['단축코드'].decode(), 'S', abs(q), 0)
+                    self.orderStrategy()
+
+
+    def chkStop2(self, lstDATA):
+        for i in lstDATA:
+            strUnder_ID = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==i['단축코드']].values[0]
+            threadshold = Strategy.dfProductInfo['threadshold_loss'][Strategy.dfProductInfo['UNDERLYING_ID']==strUnder_ID].values[0]
+            if float(i['평가손익']) < threadshold:
+                d = int(i['매매구분']) * 2 - 3
+                if d == 1:
+                    Strategy.setOrder('LossCut', i['단축코드'], 'S', int(i['청산가능수량']), 0)
+                elif d == -1:
+                    Strategy.setOrder('LossCut', i['단축코드'], 'B', int(i['청산가능수량']), 0)
                 self.orderStrategy()
 
 
@@ -291,13 +338,19 @@ class Interface():
             if Strategy.dfPosition.empty:   # 처음이면 신규추가
                 self.insertPosition(i)
             else:
-                order = [i['STRATEGY_NAME'], i['ASSET_CODE'], i['MATURITY']]
+                order = [i['STRATEGY_NAME'], i['ASSET_CODE'], i['MATURITY'], self.strAcntCode]
                 for j in Strategy.dfPosition.index: # 포지션 현황 업데이트
-                    pos = [Strategy.dfPosition['STRATEGY_ID'][j], Strategy.dfPosition['ASSET_CODE'][j], Strategy.dfPosition['MATURITY'][j]]
-                    if np.array_equal(order, pos):  # 전략명, 자산코드, 만기 일치
-                        qty = Strategy.dfPosition['POS_DIRECTION'][j] * Strategy.dfPosition['POS_AMOUNT'][j] + i['QUANTITY']
-                        Strategy.dfPosition.loc[j, 'POS_DIRECTION'] = int(qty / abs(qty))
-                        Strategy.dfPosition.loc[j, 'POS_AMOUNT'] = abs(qty)
+                    pos = [Strategy.dfPosition['STRATEGY_ID'][j], Strategy.dfPosition['ASSET_CODE'][j], Strategy.dfPosition['MATURITY'][j], Strategy.dfPosition['FUND_CODE'][j]]
+                    if np.array_equal(order, pos):  # 전략명, 자산코드, 만기, 계좌 일치
+                        qty = Strategy.dfPosition['POSITION'][j] + i['QUANTITY']
+                        if qty == 0:
+                            Strategy.dfPosition = Strategy.dfPosition.drop(j, axis=0)
+                        else:
+                            Strategy.dfPosition.loc[j, 'POS_DIRECTION'] = int(qty / abs(qty))
+                            Strategy.dfPosition.loc[j, 'POS_AMOUNT'] = abs(qty)
+                            if abs(i['QUANTITY']) > abs(Strategy.dfPosition['POSITION'][j]):
+                                Strategy.dfPosition.loc[j, 'POS_PRICE'] = i['SETTLE_PRICE']
+                            Strategy.dfPosition.loc[j, 'POSITION'] = qty
                         break
 
                     if j == Strategy.dfPosition.last_valid_index(): # 없으면 신규 추가
@@ -315,11 +368,15 @@ class Interface():
         Strategy.dfPosition.loc[l, 'STRATEGY_ID'] = orderInfo['STRATEGY_NAME']
         Strategy.dfPosition.loc[l, 'ASSET_CLASS'] = orderInfo['ASSET_CLASS']
         Strategy.dfPosition.loc[l, 'ASSET_NAME'] = orderInfo['ASSET_NAME']
+        Strategy.dfPosition.loc[l, 'ASSET_CODE'] = orderInfo['ASSET_CODE']
         Strategy.dfPosition.loc[l, 'ASSET_TYPE'] = orderInfo['ASSET_TYPE']
         Strategy.dfPosition.loc[l, 'MATURITY'] = orderInfo['MATURITY']
         Strategy.dfPosition.loc[l, 'SETTLE_CURNCY'] = self.strSettleCrncy
         Strategy.dfPosition.loc[l, 'POS_DIRECTION'] = q / abs(q)
         Strategy.dfPosition.loc[l, 'POS_AMOUNT'] = abs(q)
+        Strategy.dfPosition.loc[l, 'POS_PRICE'] = orderInfo['SETTLE_PRICE']
+        Strategy.dfPosition.loc[l, 'FUND_CODE'] = self.strAcntCode
+        Strategy.dfPosition.loc[l, 'POSITION'] = q
 
 
     # 전략별 거래내역 DB에 기록
@@ -338,6 +395,7 @@ class Interface():
             dictTrInfo['STRATEGY_ID'] = i['STRATEGY_NAME']
             dictTrInfo['ASSET_CLASS'] = i['ASSET_CLASS']
             dictTrInfo['ASSET_NAME'] = i['ASSET_NAME']
+            dictTrInfo['ASSET_CODE'] = i['ASSET_CODE']
             dictTrInfo['ASSET_TYPE'] = i['ASSET_TYPE']
             dictTrInfo['MATURITY'] = i['MATURITY']
             dictTrInfo['UNDERLYING_ID'] = i['UNDERLYING_ID']
@@ -354,20 +412,49 @@ class Interface():
             Strategy.instDB.commit()
 
 
+    # 포지션 현황 DB에 기록
+    def inputPos2DB(self):
+        if not Strategy.dfPosition.empty:
+            Strategy.instDB.executemany("INSERT INTO position VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10)", Strategy.dfPosition[0:9].values.tolist())
+            Strategy.instDB.commit()            
+
+
     # 이하 출력부분
-    def setTwBalanceInfoUI(self, DATA):
-        nRowCnt = self.wndIndi.twBalanceInfo.rowCount()
-        self.wndIndi.twBalanceInfo.insertRow(nRowCnt)
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 0, QTableWidgetItem(DATA['종목코드']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 1, QTableWidgetItem(DATA['종목명']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 2, QTableWidgetItem(DATA['매수매도구분']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 3, QTableWidgetItem(DATA['당일잔고']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 4, QTableWidgetItem(DATA['청산가능수량']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 5, QTableWidgetItem(DATA['평균단가']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 6, QTableWidgetItem(DATA['미체결수량']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 7, QTableWidgetItem(DATA['평가손익']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 8, QTableWidgetItem(DATA['수수료']))
-        self.wndIndi.twBalanceInfo.setItem(nRowCnt, 9, QTableWidgetItem(DATA['세금']))
+    def setTwBalanceInfoUI(self, DATA, isRT=None):
+        if type(DATA) == int:
+            self.wndIndi.twBalanceInfo.setRowCount(0)   # 기존 내용 삭제
+            for i in Strategy.dfPosition.index:
+                nRowCnt = self.wndIndi.twBalanceInfo.rowCount()
+                self.wndIndi.twBalanceInfo.insertRow(nRowCnt)
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 1, QTableWidgetItem(Strategy.dfPosition['ASSET_NAME'][i]))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 2, QTableWidgetItem(str(Strategy.dfPosition['POS_DIRECTION'][i])))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 4, QTableWidgetItem(str(Strategy.dfPosition['POS_AMOUNT'][i])))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 5, QTableWidgetItem(str(Strategy.dfPosition['POS_PRICE'][i])))
+        else:
+            nRowCnt = self.wndIndi.twBalanceInfo.rowCount()
+            self.wndIndi.twBalanceInfo.insertRow(nRowCnt)
+            if isRT:
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 0, QTableWidgetItem(DATA['종목코드']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 1, QTableWidgetItem(DATA['종목명']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 2, QTableWidgetItem(DATA['매수매도구분']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 3, QTableWidgetItem(DATA['당일잔고']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 4, QTableWidgetItem(DATA['청산가능수량']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 5, QTableWidgetItem(DATA['평균단가']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 6, QTableWidgetItem(DATA['미체결수량']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 7, QTableWidgetItem(DATA['평가손익']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 8, QTableWidgetItem(DATA['수수료']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 9, QTableWidgetItem(DATA['세금']))
+            else:
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 0, QTableWidgetItem(DATA['종목코드']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 1, QTableWidgetItem(DATA['종목명']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 2, QTableWidgetItem(DATA['매도매수구분명']))
+                # self.wndIndi.twBalanceInfo.setItem(nRowCnt, 3, QTableWidgetItem(DATA['당일잔고']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 4, QTableWidgetItem(DATA['수량']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 5, QTableWidgetItem(DATA['장부단가']))
+                # self.wndIndi.twBalanceInfo.setItem(nRowCnt, 6, QTableWidgetItem(DATA['미체결수량']))
+                self.wndIndi.twBalanceInfo.setItem(nRowCnt, 7, QTableWidgetItem(DATA['평가손익']))
+                # self.wndIndi.twBalanceInfo.setItem(nRowCnt, 8, QTableWidgetItem(DATA['수수료']))
+                # self.wndIndi.twBalanceInfo.setItem(nRowCnt, 9, QTableWidgetItem(DATA['세금']))
 
         self.wndIndi.twBalanceInfo.resizeColumnsToContents()
 
@@ -453,7 +540,7 @@ class Interface():
             self.wndIndi.twPositionInfo.setItem(nRowCnt, 0, QTableWidgetItem(Strategy.dfPosition['STRATEGY_ID'][i]))   # 전략명
             self.wndIndi.twPositionInfo.setItem(nRowCnt, 1, QTableWidgetItem(Strategy.dfPosition['ASSET_NAME'][i]))    # 자산명
             self.wndIndi.twPositionInfo.setItem(nRowCnt, 2, QTableWidgetItem(Strategy.dfPosition['ASSET_TYPE'][i]))    # 자산구분
-            self.wndIndi.twPositionInfo.setItem(nRowCnt, 3, QTableWidgetItem(str(Strategy.dfPosition['POS_DIRECTION'][i] * Strategy.dfPosition['POS_AMOUNT'][i])))  # 포지션
+            self.wndIndi.twPositionInfo.setItem(nRowCnt, 3, QTableWidgetItem(str(Strategy.dfPosition['POSITION'][i])))  # 포지션
         
         self.wndIndi.twPositionInfo.resizeColumnsToContents()
 
