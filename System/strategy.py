@@ -200,7 +200,7 @@ class Strategy(metaclass=SingletonMeta):
                     i['PRICE'] = PriceInfo['현재가']
                     direction = '01'
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], i['PRICE'])
-                ret = interface.objOrder.order(interface, acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction)
+                ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction)
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret

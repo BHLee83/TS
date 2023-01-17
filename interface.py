@@ -267,7 +267,6 @@ class Interface():
                     Strategy.setOrder('LossCut', DATA['종목코드'], 'S', int(DATA['청산가능수량']), 0)
                 elif d == -1:
                     Strategy.setOrder('LossCut', DATA['종목코드'], 'B', int(DATA['청산가능수량']), 0)
-                self.orderStrategy()
 
 
     # Realtime PL check! (직접 계산)
@@ -285,7 +284,6 @@ class Interface():
                         Strategy.setOrder('LossCut', PriceInfo['단축코드'].decode(), 'B', abs(q), 0)
                     elif q > 0:
                         Strategy.setOrder('LossCut', PriceInfo['단축코드'].decode(), 'S', abs(q), 0)
-                    self.orderStrategy()
 
 
     def chkStop2(self, lstDATA):
@@ -298,7 +296,6 @@ class Interface():
                     Strategy.setOrder('LossCut', i['단축코드'], 'S', int(i['청산가능수량']), 0)
                 elif d == -1:
                     Strategy.setOrder('LossCut', i['단축코드'], 'B', int(i['청산가능수량']), 0)
-                self.orderStrategy()
 
 
     # 실시간 체결정보 확인
