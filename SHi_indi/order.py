@@ -24,18 +24,18 @@ class Order():
         self.rqidD = {}
 
 
-    def order(self, acnt_num:str, pwd:str, code:str, qty, price, direction:str, condition:str='0', order_type:str='L', trading_type:str='3', treat_type:str='1', modify_type:str='0', origin_order_num=None, reserve_order=None):
+    def order(self, acnt_num:str, pwd:str, ordInfo, direction:str, condition:str='0', order_type:str='L', trading_type:str='3', treat_type:str='1', modify_type:str='0', origin_order_num=None, reserve_order=None):
         " 선물 주문을 요청한다."
-        if Strategy.chkAbnormOrder(acnt_num, code, qty, price, direction):  # 주문 이상여부 체크
+        if Strategy.chkAbnormOrder(acnt_num, ordInfo, direction):  # 주문 이상여부 체크
             self.ReceiveSysMsg('주문 거부. 이상주문 감지. 시스템을 확인하세요!')
             return False
         else:
             ret = self.IndiTR.dynamicCall("SetQueryName(QString)", "SABC100U1")
             ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 0, acnt_num)  # 계좌번호
             ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 1, pwd)  # 비밀번호
-            ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, code)  # 종목코드
-            ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, str(qty))  # 주문수량
-            ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, str(round(price, 2)))  # 주문단가 (소수점 2자리(양수:999.99, 음수:-999.99), RFR종목은 소수점 3자리)
+            ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 2, ordInfo['PRODUCT_CODE'])  # 종목코드
+            ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 3, str(ordInfo['QUANTITY']))  # 주문수량
+            ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 4, str(round(ordInfo['PRICE'], 2)))  # 주문단가 (소수점 2자리(양수:999.99, 음수:-999.99), RFR종목은 소수점 3자리)
             ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 5, condition)  # 주문조건 (0:일반(FAS), 3:IOC(FAK), 4:FOK)
             ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 6, direction)  # 매매구분 (01:매도, 02:매수, (정정/취소시):01)
             ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 7, order_type)  # 호가유형 (L:지정가, M:시장가, C:조건부, B:최유리)
@@ -46,6 +46,7 @@ class Order():
             ret = self.IndiTR.dynamicCall("SetSingleData(int, QString)", 12, reserve_order)  # 예약주문여부 (생략가능, 1:예약)
             rqid = self.IndiTR.dynamicCall("RequestData()")  # 데이터 요청
             self.rqidD[rqid] = "SABC100U1"
+            ordInfo['RQID'] = rqid
             logging.info('주문 실행')
 
             return True
@@ -93,9 +94,12 @@ class Order():
             else:
                 # print("매수 및 매도 주문결과 :", DATA)
                 logging.info('주문 접수: %s', DATA)
-                # self.instInterface.objOrder.iqrySettle(self.instInterface.strAcntCode, self.instInterface.dfAcntInfo['Acnt_Pwd'][0], self.instInterface.strToday)   # 체결/미체결 조회
-                # self.instInterface.setTwOrderInfoUI(DATA)
-                Strategy.dictOrderInfo_Rcv[DATA['주문번호']] = None
+                # Strategy.dictOrderInfo_Rcv[DATA['주문번호']] = None
+                for i in Strategy.lstOrderInfo_Net:
+                    if i['RQID'] == rqid:
+                        # Strategy.dictOrderInfo_Net[DATA['주문번호']] = i.copy()
+                        i['주문번호'] = DATA['주문번호']
+                        break
             
             self.instInterface.event_loop.exit()
 

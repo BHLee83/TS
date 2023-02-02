@@ -119,7 +119,7 @@ class TS_RB_0016_1():
                 self.applyChart()   # 전략 적용
         else:
             if self.npPriceInfo == None:    # 첫 데이터 수신시
-                Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', 1, 0)    # test
+                # Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', 1, 0)    # test
                 pass
             else:
                 if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
@@ -135,9 +135,9 @@ class TS_RB_0016_1():
                         self.nPosition = 0
                     else:
                         try:
-                            self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
-                                                and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
-                                                and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
+                            self.nPosition = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==__class__.__name__) \
+                                                & (Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix]) \
+                                                & (Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix])].values[0]
                         except:
                             self.nPosition = 0
                     self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight

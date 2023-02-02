@@ -1,3 +1,4 @@
+from datetime import datetime as dt
 import pandas as pd
 
 import sys
@@ -9,7 +10,8 @@ from DB.dbconn import oracleDB
 
 
 # Raw data
-f = '20230105'
+f = dt.today().strftime('%Y%m%d')
+# f = '20230125'
 df = pd.read_csv('C:/Infomax/bin/usr/scinfo/local/Data/' + f + '.csv', encoding='euc-kr')
 df.sort_index(axis=0, ascending=False, inplace=True)
 df.reset_index(inplace=True)

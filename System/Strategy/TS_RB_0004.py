@@ -170,9 +170,9 @@ class TS_RB_0004():
                     self.nPosition = 0
                 else:
                     try:
-                        self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
-                                            and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
-                                            and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
+                        self.nPosition = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==__class__.__name__) \
+                                            & (Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix]) \
+                                            & (Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix])].values[0]
                     except:
                         self.nPosition = 0
                 self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight

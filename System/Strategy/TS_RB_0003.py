@@ -67,10 +67,10 @@ class TS_RB_0003():
         for i in df.index:
             if i > 0:
                 df.loc[i, 'MP'] = df['MP'][i-1]
-                nLast_month = df.loc[i-1, '일자'][4:6]
+                nLast_month = int(df.loc[i-1, '일자'][4:6])
                 nCurrent_month = df.loc[i, '일자'][4:6]
                 if nCurrent_month != nLast_month:    # 월 변경시
-                    if any(nLast_month==3, nLast_month==6, nLast_month==9, nLast_month==12):    # 분기마다
+                    if any([nLast_month==3, nLast_month==6, nLast_month==9, nLast_month==12]):  # 분기마다
                         lstMonth_close.append(df.loc[i-1, '종가'])
                         if len(lstMonth_close) > 1:
                             if lstMonth_close[-1] > lstMonth_close[-2]:
@@ -95,9 +95,9 @@ class TS_RB_0003():
                         self.nPosition = 0
                     else:
                         try:
-                            self.nPosition = Strategy.dfPosition['POSITION'][Strategy.dfPosition['STRATEGY_ID']==__class__.__name__ \
-                                                and Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix] \
-                                                and Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix]].values[0]
+                            self.nPosition = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==__class__.__name__) \
+                                                & (Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix]) \
+                                                & (Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix])].values[0]
                         except:
                             self.nPosition = 0
                     self.amt = abs(self.nPosition) + self.lstTrUnit[self.ix]*self.fWeight

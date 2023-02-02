@@ -102,15 +102,15 @@ class Strategy(metaclass=SingletonMeta):
 
 
     # Abnormal Order Check!
-    def chkAbnormOrder(acnt_num, code, qty, price, direction):
+    def chkAbnormOrder(acnt_num, ordInfo, direction):
         nChkCnt = 10
-        strUnder_ID = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==code].values[0]
+        strUnder_ID = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==ordInfo['PRODUCT_CODE']].values[0]
         strAsset_Code = Strategy.dfProductInfo['ASSET_CODE'][Strategy.dfProductInfo['UNDERLYING_ID']==strUnder_ID].values[0]
         dictOrder = {}
         dictOrder['ACCOUNT'] = acnt_num
         dictOrder['PRODUCT'] = strAsset_Code
-        dictOrder['QUANTITY'] = qty
-        dictOrder['PRICE'] = price
+        dictOrder['QUANTITY'] = ordInfo['QUANTITY']
+        dictOrder['PRICE'] = ordInfo['PRICE']
         dictOrder['DIRECTION'] = direction
         dictOrder['OCCUR_TIME'] = dt.datetime.now()
         dictOrder['TIME_DIFF'] = dt.timedelta(0)
@@ -165,7 +165,6 @@ class Strategy(metaclass=SingletonMeta):
             dictOrderInfo['MATURITY_DATE'] = Strategy.dfCFutMst['최종거래일'][Strategy.dfCFutMst['단축코드']==productCode].values[0]
             dictOrderInfo['MATURITY'] = dictOrderInfo['MATURITY_DATE'][2:6]
             dictOrderInfo['QUANTITY'] = qty * d
-            # 일단은 order_type 고려하지 않음 (때문에 price도 고려대상 X)
             dictOrderInfo['ORDER_TYPE'] = order_type
             dictOrderInfo['ORDER_PRICE'] = price
 
@@ -179,8 +178,7 @@ class Strategy(metaclass=SingletonMeta):
         for i in Strategy.lstOrderInfo_Net:
             if i['QUANTITY'] == 0:  # 네팅 수량이 0이면 주문 패스
                 logging.info('네팅 수량 0으로 실주문 없음')
-                continue
-            if PriceInfo == None:
+            elif PriceInfo == None:
                 if i['QUANTITY'] > 0:
                     i['PRICE'] = 0
                     direction = '02'
@@ -188,19 +186,21 @@ class Strategy(metaclass=SingletonMeta):
                     i['PRICE'] = 0
                     direction = '01'
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], 'M')
-                ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction, 'M')
+                # ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction, 'M')
+                ret = interface.objOrder.order(acntCode, acntPwd, i, direction, 'M')
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
             else:
-                if i['QUANTITY'] > 0: # FIXME: 일단 현재가로 주문 (실거래시 상대호가 등으로 바꿀것)
-                    i['PRICE'] = PriceInfo['현재가']
+                if i['QUANTITY'] > 0: # TODO: 일단 상대1호가로 주문 (추후 중간가격 주문이나 주문수량 고려 등 필요)
+                    i['PRICE'] = PriceInfo['매도1호가']
                     direction = '02'
                 elif i['QUANTITY'] < 0:
-                    i['PRICE'] = PriceInfo['현재가']
+                    i['PRICE'] = PriceInfo['매수1호가']
                     direction = '01'
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], i['PRICE'])
-                ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction)
+                # ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction)
+                ret = interface.objOrder.order(acntCode, acntPwd, i, direction)
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
@@ -213,23 +213,28 @@ class Strategy(metaclass=SingletonMeta):
         
     def nettingOrder(): # 주문 통합하기
         Strategy.lstOrderInfo_Net = []
-        for i in Strategy.lstOrderInfo:
+        for i, v in enumerate(Strategy.lstOrderInfo):
+            v['ID'] = str(i)    # 기존 주문 넘버링
             if Strategy.lstOrderInfo_Net == []:
-                Strategy.addToNettingOrder(i['PRODUCT_CODE'], i['QUANTITY'])
+                Strategy.addToNettingOrder(v)
             else:
                 for j in Strategy.lstOrderInfo_Net:
-                    if j['PRODUCT_CODE'] == i['PRODUCT_CODE']:
-                        j['QUANTITY'] += i['QUANTITY']
+                    if all(j['PRODUCT_CODE'] == v['PRODUCT_CODE'], j['ORDER_TYPE'] == v['ORDER_TYPE']):
+                        j['QUANTITY'] += v['QUANTITY']
+                        j['NET_ID'] += ',' + v['ID']   # 네팅된 주문의 ID 목록
                         break
                 if j == Strategy.lstOrderInfo_Net[-1]:
-                    Strategy.addToNettingOrder(i['PRODUCT_CODE'], i['QUANTITY'])
+                    Strategy.addToNettingOrder(v)
 
 
-    def addToNettingOrder(productCode, qty):
+    def addToNettingOrder(v):
         dictOrderInfo = {}
         dictOrderInfo['OCCUR_TIME'] = dt.datetime.now().time()
-        dictOrderInfo['PRODUCT_CODE'] = productCode
-        dictOrderInfo['QUANTITY'] = qty
+        dictOrderInfo['PRODUCT_CODE'] = v['PRODUCT_CODE']
+        dictOrderInfo['QUANTITY'] = v['QUANTITY']
+        dictOrderInfo['ORDER_TYPE'] = v['ORDER_TYPE']   # 일단 주문타입(지정가/시장가) 구분만 고려 (시장가 문제없음)
+        # TODO: 가격을 고려하지 않아 지정가는 executeOrder에서 정의된 호가로만 주문 발생. 미리 내놓는 주문의 가격 등은 고려되지 않는 문제 있음
+        dictOrderInfo['NET_ID'] = v['ID']
         Strategy.lstOrderInfo_Net.append(dictOrderInfo)
 
 
