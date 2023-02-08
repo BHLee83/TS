@@ -500,6 +500,7 @@ class Interface():
     # 포지션 현황 DB에 기록
     def inputPos2DB(self):
         if not Strategy.dfPosition.empty:
+            self.instDB = oracleDB('oraDB1')
             lstAssetCode = []
             for i in Strategy.dfStrategyInfo['ASSET_CODE']: # 전략에 사용된 자산 리스트
                 tmp = i.split(',')
