@@ -69,7 +69,7 @@ class TS_RB_0006():
         df['chUpper'] = 0.0
         df['chLower'] = 0.0
         for i in df.index:
-            if i >= (self.nWeek + 1) * 5:
+            if i > (self.nWeek + 1) * 5:
                 df.loc[i, 'MP'] = df['MP'][i-1]
                 df.loc[i, 'chUpper'] = df['chUpper'][i-1]
                 df.loc[i, 'chLower'] = df['chLower'][i-1]
