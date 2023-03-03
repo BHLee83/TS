@@ -75,7 +75,7 @@ class TS_RB_0004():
         df['SL'] = 0.0
         df['EL'] = 0.0
         df['ES'] = 0.0
-        for i in df.index:
+        for i in df.index-1:
             if i > 0:
                 self.nTrend = 0
                 self.boolNewHigh = False
@@ -166,30 +166,22 @@ class TS_RB_0004():
                 return False
             else:
                 self.applyChart()
-                if Strategy.dfPosition.empty:   # 포지션 확인 및 수량 지정
-                    self.nPosition = 0
-                else:
-                    try:
-                        self.nPosition = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==__class__.__name__) \
-                                            & (Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix]) \
-                                            & (Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix])].values[0]
-                    except:
-                        self.nPosition = 0
+                self.nPosition = Strategy.getPosition(self.dfInfo['NAME'], self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
                 self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
                 self.amt_exit = abs(self.nPosition)
         else:
             df = self.lstData[self.ix]
             if self.npPriceInfo == None:
-                if df['MP'][1] == 0:    # Entry
-                    if PriceInfo['현재가'] == PriceInfo['시가']:
-                        if PriceInfo['현재가'] >= df['고가'][1]:
-                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 시초가 매수
-                            df.loc[0, 'MP'] = 1
-                            self.logger.info('Buy %s amount ordered', self.amt_entry)
-                        if PriceInfo['현재가'] <= df['저가'][1]:
-                            Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 시초가 매도
-                            df.loc[0, 'MP'] = -1
-                            self.logger.info('Sell %s amount ordered', self.amt_entry)
+                if (df['MP'][1] == 0) and (df['MP'][0] == 0):    # Entry
+                    # if PriceInfo['현재가'] == PriceInfo['시가']:
+                    if PriceInfo['현재가'] >= df['고가'][1]:
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 시초가 매수
+                        df.loc[0, 'MP'] = 1
+                        self.logger.info('Buy %s amount ordered', self.amt_entry)
+                    if PriceInfo['현재가'] <= df['저가'][1]:
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 시초가 매도
+                        df.loc[0, 'MP'] = -1
+                        self.logger.info('Sell %s amount ordered', self.amt_entry)
             else:
                 if (df['MP'][1] == 0) and (df['MP'][0] == 0):    # Entry
                     if (self.npPriceInfo['현재가'] < df['고가'][1]) and (PriceInfo['현재가'] >= df['고가'][1]):

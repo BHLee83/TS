@@ -64,11 +64,11 @@ class TS_RB_0003():
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         lstMonth_close = []
         df['MP'] = 0
-        for i in df.index:
+        for i in df.index-1:
             if i > 0:
                 df.loc[i, 'MP'] = df['MP'][i-1]
                 nLast_month = int(df.loc[i-1, '일자'][4:6])
-                nCurrent_month = df.loc[i, '일자'][4:6]
+                nCurrent_month = int(df.loc[i, '일자'][4:6])
                 if nCurrent_month != nLast_month:    # 월 변경시
                     if any([nLast_month==3, nLast_month==6, nLast_month==9, nLast_month==12]):  # 분기마다
                         lstMonth_close.append(df.loc[i-1, '종가'])
@@ -91,23 +91,13 @@ class TS_RB_0003():
                     return False
                 else:
                     self.applyChart()
-                    if Strategy.dfPosition.empty:   # 포지션 확인 및 수량 지정
-                        self.nPosition = 0
-                    else:
-                        try:
-                            self.nPosition = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==__class__.__name__) \
-                                                & (Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix]) \
-                                                & (Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix])].values[0]
-                        except:
-                            self.nPosition = 0
+                    self.nPosition = Strategy.getPosition(self.dfInfo['NAME'], self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
                     self.amt = abs(self.nPosition) + self.lstTrUnit[self.ix]*self.fWeight
                     df = self.lstData[self.ix]
                     if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
                         if df['MP'][1] == 1:
                             Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
-                            df.loc[0, 'MP'] = 1
                             self.logger.info('Buy %s amount ordered', self.amt)
                         elif df['MP'][1] == -1:
                             Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt, 0)
-                            df.loc[0, 'MP'] = -1
                             self.logger.info('Sell %s amount ordered', self.amt)
