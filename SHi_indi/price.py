@@ -27,7 +27,7 @@ class Price():
 
         self.dfCFutMst = pd.DataFrame(None, columns={'표준코드', '단축코드', '파생상품ID', '한글종목명', '기초자산ID', '스프레드근월물표준코드', '스프레드원월물표준코드', '최종거래일', '기초자산종목코드', '거래단위', '거래승수'})
 
-        PriceInfodt = np.dtype([('영문종목명', 'S40'), ('상한가', 'f'), ('하한가', 'f'), ('전일종가', 'f'),
+        PriceInfodt = np.dtype([('한글종목명', 'S40'), ('상한가', 'f'), ('하한가', 'f'), ('전일종가', 'f'),
                         ('단축코드', 'S10'), ('체결시간', 'S6'), ('시가', 'f'), ('고가', 'f'), ('저가', 'f'), ('현재가', 'f'), 
                         ('단위체결량', 'u4'), ('누적거래량', 'u4'), ('매도1호가', 'f'), ('매도1호가수량', 'u4'), ('매수1호가', 'f'), ('매수1호가수량', 'u4')])
         self.PriceInfo = np.empty([1], dtype=PriceInfodt)
@@ -118,7 +118,7 @@ class Price():
         
         # 종목 기본정보 수신
         elif TRName == "MB":
-            self.PriceInfo[0]['영문종목명'] = self.IndiTR.dynamicCall("GetSingleData(int)", 7)
+            self.PriceInfo[0]['한글종목명'] = (self.IndiTR.dynamicCall("GetSingleData(int)", 7)).encode('utf8')
             self.PriceInfo[0]['상한가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 13)
             self.PriceInfo[0]['하한가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 14)
             self.PriceInfo[0]['전일종가'] = self.IndiTR.dynamicCall("GetSingleData(int)", 38)

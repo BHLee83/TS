@@ -143,9 +143,9 @@ class Strategy(metaclass=SingletonMeta):
     def setOrder(strategyName:str, productCode:str, direction:str, qty:int, price:float):
         if qty != 0:
             direction = direction.upper()
-            if direction == 'B' or direction == 'BUY' or direction == 'LONG' or direction == 'EXITSHORT':
+            if direction == 'B' or direction == 'BUY' or direction == 'LONG' or direction == 'EXITSHORT' or direction == 'ES':
                 d = 1
-            elif direction == 'S' or direction == 'SELL' or direction == 'SHORT' or direction == 'EXITLONG':
+            elif direction == 'S' or direction == 'SELL' or direction == 'SHORT' or direction == 'EXITLONG' or direction == 'EL':
                 d = -1
 
             if price == 0:
@@ -219,7 +219,7 @@ class Strategy(metaclass=SingletonMeta):
                 Strategy.addToNettingOrder(v)
             else:
                 for j in Strategy.lstOrderInfo_Net:
-                    if all(j['PRODUCT_CODE'] == v['PRODUCT_CODE'], j['ORDER_TYPE'] == v['ORDER_TYPE']):
+                    if all([j['PRODUCT_CODE'] == v['PRODUCT_CODE'], j['ORDER_TYPE'] == v['ORDER_TYPE']]):
                         j['QUANTITY'] += v['QUANTITY']
                         j['NET_ID'] += ',' + v['ID']   # 네팅된 주문의 ID 목록
                         break
@@ -270,6 +270,18 @@ class Strategy(metaclass=SingletonMeta):
         return False
 
     
+    def getPosition(id:str, name:str, type:str):
+        if Strategy.dfPosition.empty:
+            return 0
+        else:
+            try:
+                return Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==id) \
+                        & (Strategy.dfPosition['ASSET_NAME']==name) \
+                        & (Strategy.dfPosition['ASSET_TYPE']==type)].values[0]
+            except:
+                return 0
+
+
     def chkPrice(interface, PriceInfo):
         for i, v in enumerate(Strategy.lstPriceInfo):
             if v['단축코드'] == PriceInfo['단축코드']:

@@ -335,7 +335,7 @@ class Interface():
     def setSettleInfo(self, DATA):
         if int(DATA['미체결수량']) == 0:    # 주문수량 전량 체결
             for i in Strategy.lstOrderInfo_Net:
-                if i['주문번호'] == DATA['주문번호']:   # 주문번호로 주문내역 찾고
+                if i['주문번호'] == int(DATA['주문번호']):   # 주문번호로 주문내역 찾고
                     lstIDs = i['NET_ID'].split(',')
                     for j in lstIDs:    # 네팅되기 전 주문내역 찾아
                         ordInfo = Strategy.lstOrderInfo[int(j)]
@@ -511,7 +511,7 @@ class Interface():
             strQuery = f"SELECT position.*, pos_direction*pos_amount AS position FROM position WHERE base_date = '{self.dtToday}' AND asset_code IN {assetCode}"
             df = self.instDB.query_to_df(strQuery, 100)
             if not df.empty:    # 당일자로 이미 기록된 포지션이 있으면
-                strQuery = f"DELETE * FROM position WHERE base_date = '{self.dtToday}' AND asset_code IN {assetCode}"   # 지우고
+                strQuery = f"DELETE FROM position WHERE base_date = '{self.dtToday}' AND asset_code IN {assetCode}"   # 지우고
                 Strategy.instDB.execute(strQuery)
             # 쓰기
             Strategy.dfPosition['BASE_DATE'] = self.dtToday
@@ -598,7 +598,10 @@ class Interface():
                     self.wndIndi.twOrderInfo.setItem(nRowCnt, 3, QTableWidgetItem(i['PRODUCT_CODE']))
                     self.wndIndi.twOrderInfo.setItem(nRowCnt, 4, QTableWidgetItem(d))
                     self.wndIndi.twOrderInfo.setItem(nRowCnt, 5, QTableWidgetItem(str(abs(i['QUANTITY']))))
-                    self.wndIndi.twOrderInfo.setItem(nRowCnt, 6, QTableWidgetItem(str(i['PRICE'])))
+                    try:
+                        self.wndIndi.twOrderInfo.setItem(nRowCnt, 6, QTableWidgetItem(str(i['PRICE'])))
+                    except:
+                        self.wndIndi.twOrderInfo.setItem(nRowCnt, 6, QTableWidgetItem('0'))
                 
         self.wndIndi.twOrderInfo.resizeColumnsToContents()
 
@@ -655,7 +658,7 @@ class Interface():
         self.wndIndi.twProductInfo.insertRow(nRowCnt)
 
         t = str(PriceInfo['체결시간'])
-        # self.wndIndi.twProductInfo.setItem(nRowCnt, 0, QTableWidgetItem(str(PriceInfo['영문종목명']).split("'")[1]))   # 영문종목명
+        # self.wndIndi.twProductInfo.setItem(nRowCnt, 0, QTableWidgetItem(str(PriceInfo['한글종목명']).split("'")[1]))   # 한글종목명
         self.wndIndi.twProductInfo.setItem(nRowCnt, 0, QTableWidgetItem(t[2:4] + ":" + t[4:6] + ":" + t[6:8]))  # 체결시간
         # self.wndIndi.twProductInfo.setItem(nRowCnt, 2, QTableWidgetItem(str(PriceInfo['상한가']))) # 상한가
         # self.wndIndi.twProductInfo.setItem(nRowCnt, 3, QTableWidgetItem(str(PriceInfo['하한가']))) # 히힌기

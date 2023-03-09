@@ -98,7 +98,7 @@ class Order():
                 for i in Strategy.lstOrderInfo_Net:
                     if i['RQID'] == rqid:
                         # Strategy.dictOrderInfo_Net[DATA['주문번호']] = i.copy()
-                        i['주문번호'] = DATA['주문번호']
+                        i['주문번호'] = int(DATA['주문번호'])
                         break
             
             self.instInterface.event_loop.exit()
