@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 
@@ -7,11 +8,27 @@ class Indicator():
         pass
 
 
-    def ma(df:pd.DataFrame, idx:str, period:int, ascending=True) -> pd.DataFrame:
+    def MA(data:pd.Series, period:int, ascending=True) -> pd.DataFrame:
         if ascending:
-            df[idx] = df[idx].rolling(window=period).mean()
+            return data.rolling(window=period).mean().copy()
         else:
-            tmp = df[idx].sort_index(ascending=False)
-            df[idx] = tmp.rolling(window=period).mean()
+            tmp = data.sort_index(ascending=False)
+            return tmp.rolling(window=period).mean().copy()
 
-        return df[idx].copy()
+    
+    def ATR(high:pd.Series, low:pd.Series, close:pd.Series, period:int, ascending=True) -> pd.Series:
+        if ascending:
+            HIGH = high
+            LOW = low
+            CLOSE = close
+        else:
+            HIGH = high.sort_index(ascending=ascending)
+            LOW = low.sort_index(ascending=ascending)
+            CLOSE = close.sort_index(ascending=ascending)
+        
+        HIGH_LOW = HIGH - LOW
+        HIGH_CLOSE = np.abs(HIGH - CLOSE.shift())
+        LOW_CLOSE = np.abs(LOW - CLOSE.shift())
+        TR = pd.Series(np.array([HIGH_LOW, HIGH_CLOSE, LOW_CLOSE]).max(axis=0))
+        
+        return TR.ewm(span=period).mean()
