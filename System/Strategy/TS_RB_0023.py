@@ -37,7 +37,8 @@ class TS_RB_0023():
         self.lstTimeIntrvl = self.lstTimeFrame_tmp[1]
         self.ix = 0 # 대상 상품의 인덱스
         self.nPosition = 0
-        self.amt = 0
+        self.amt_entry = 0
+        self.amt_exit = 0
 
         # Local setting variables
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
@@ -49,8 +50,8 @@ class TS_RB_0023():
 
     # 과거 데이터 생성 (인디로 수신시 일봉은 연결선물, 분봉은 근월물 코드로 생성)
     def createHistData(self, instInterface):
-        # for i, v in enumerate(self.lstProductNCode):
-        for i, v in enumerate(self.lstProductCode):
+        for i, v in enumerate(self.lstProductNCode):
+        # for i, v in enumerate(self.lstProductCode):
             data = Strategy.getHistData(v, self.lstTimeFrame[i])
             if type(data) == bool:
                 if data == False:
@@ -60,7 +61,7 @@ class TS_RB_0023():
 
     # 과거 데이터 로드
     def getHistData(self):
-        data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
+        data = Strategy.getHistData(self.lstProductNCode[self.ix], self.lstTimeFrame[self.ix])
         if type(data) == bool:
             if data == False:
                 return pd.DataFrame(None)
@@ -72,6 +73,7 @@ class TS_RB_0023():
     # 전략 적용
     def applyChart(self):   # Strategy apply on historical chart
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
+        
         AvgVal = df['종가'].rolling(window=self.nAvgLen).mean()
         SDmult = df['종가'].rolling(window=self.nSDLen).std() * self.nSDev
         DispTop = AvgVal.shift(self.nDisp) + SDmult
@@ -105,15 +107,7 @@ class TS_RB_0023():
             else:
                 self.applyChart()   # 전략 적용
         else:
-            if Strategy.dfPosition.empty:   # 포지션 확인 및 수량 지정
-                self.nPosition = 0
-            else:
-                try:
-                    self.nPosition = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==__class__.__name__) \
-                                        & (Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix]) \
-                                        & (Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix])].values[0]
-                except:
-                    self.nPosition = 0
+            self.nPosition = Strategy.getPosition(self.dfInfo['NAME'], self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
             self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
             self.amt_exit = abs(self.nPosition)
 
