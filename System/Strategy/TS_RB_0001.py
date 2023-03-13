@@ -1,5 +1,6 @@
 from System.strategy import Strategy
 from System.function import Function
+from System.indicator import Indicator
 
 import pandas as pd
 from datetime import datetime as dt
@@ -67,16 +68,17 @@ class TS_RB_0001():
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         strColName1 = 'MA' + str(self.nP1)
         strColName2 = 'MA' + str(self.nP2)
-        df[strColName1] = df['종가'].rolling(window=self.nP1).mean()
-        df[strColName2] = df['종가'].rolling(window=self.nP2).mean()
+        df[strColName1] = Indicator.MA(df['종가'], self.nP1)
+        df[strColName2] = Indicator.MA(df['종가'], self.nP2)
         df['MP'] = 0
         for i in df.index-1:
-            if i > 0:
-                df.loc[i, 'MP'] = df['MP'][i-1]
-                if Function.CrossUp(df[strColName1][i-1:i+1].values, df[strColName2][i-1:i+1].values):
-                    df.loc[i, 'MP'] = 1
-                elif Function.CrossDown(df[strColName1][i-1:i+1].values, df[strColName2][i-1:i+1].values):
-                    df.loc[i, 'MP'] = -1
+            if i < self.nP2:
+                continue
+            df.loc[i, 'MP'] = df['MP'][i-1]
+            if Function.CrossUp(df[strColName1][i-2:i].values, df[strColName2][i-2:i].values):
+                df.loc[i, 'MP'] = 1
+            elif Function.CrossDown(df[strColName1][i-2:i].values, df[strColName2][i-2:i].values):
+                df.loc[i, 'MP'] = -1
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[self.ix]['MP'] = df['MP']
 
@@ -94,10 +96,10 @@ class TS_RB_0001():
                     self.nPosition = Strategy.getPosition(self.dfInfo['NAME'], self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
                     self.amt = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
                     df = self.lstData[self.ix]
-                    if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
-                        if df['MP'][1] == 1:
+                    if df['MP'][0] != df['MP'][1]:  # 포지션 변동시
+                        if df['MP'][0] == 1:
                             Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
                             self.logger.info('Buy %s amount ordered', self.amt)
-                        if df['MP'][1] == -1:
+                        if df['MP'][0] == -1:
                             Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt, 0)
                             self.logger.info('Sell %s amount ordered', self.amt)
