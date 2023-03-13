@@ -99,15 +99,7 @@ class TS_RB_0008():
                     return False
                 else:
                     self.applyChart()
-                    if Strategy.dfPosition.empty:   # 포지션 확인 및 수량 지정
-                        self.nPosition = 0
-                    else:
-                        try:
-                            self.nPosition = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==__class__.__name__) \
-                                                & (Strategy.dfPosition['ASSET_NAME']==self.lstAssetCode[self.ix]) \
-                                                & (Strategy.dfPosition['ASSET_TYPE']==self.lstAssetType[self.ix])].values[0]
-                        except:
-                            self.nPosition = 0
+                    self.nPosition = Strategy.getPosition(self.dfInfo['NAME'], self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
                     self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
                     self.amt_exit = abs(self.nPosition)
                     df = self.lstData[self.ix]
