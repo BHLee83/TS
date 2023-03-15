@@ -64,19 +64,20 @@ class TS_RB_0003():
         df = self.lstData[self.ix].sort_index(ascending=False).reset_index()
         lstMonth_close = []
         df['MP'] = 0
-        for i in df.index-1:
-            if i > 0:
-                df.loc[i, 'MP'] = df['MP'][i-1]
-                nLast_month = int(df.loc[i-1, '일자'][4:6])
-                nCurrent_month = int(df.loc[i, '일자'][4:6])
-                if nCurrent_month != nLast_month:    # 월 변경시
-                    if any([nLast_month==3, nLast_month==6, nLast_month==9, nLast_month==12]):  # 분기마다
-                        lstMonth_close.append(df.loc[i-1, '종가'])
-                        if len(lstMonth_close) > 1:
-                            if lstMonth_close[-1] > lstMonth_close[-2]:
-                                df.loc[i-1, 'MP'] = 1
-                            elif lstMonth_close[-1] < lstMonth_close[-2]:
-                                df.loc[i-1, 'MP'] = -1
+        for i in df.index:
+            if i < 1:
+                continue
+            df.loc[i, 'MP'] = df['MP'][i-1]
+            nLast_month = int(df.loc[i-1, '일자'][4:6])
+            nCurrent_month = int(df.loc[i, '일자'][4:6])
+            if nCurrent_month != nLast_month:    # 월 변경시
+                if any([nLast_month==3, nLast_month==6, nLast_month==9, nLast_month==12]):  # 분기마다
+                    lstMonth_close.append(df.loc[i-1, '종가'])
+                    if len(lstMonth_close) > 1:
+                        if lstMonth_close[-1] > lstMonth_close[-2]:
+                            df.loc[i-1, 'MP'] = 1
+                        elif lstMonth_close[-1] < lstMonth_close[-2]:
+                            df.loc[i-1, 'MP'] = -1
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[self.ix]['MP'] = df['MP']
 
@@ -94,10 +95,10 @@ class TS_RB_0003():
                     self.nPosition = Strategy.getPosition(self.dfInfo['NAME'], self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
                     self.amt = abs(self.nPosition) + self.lstTrUnit[self.ix]*self.fWeight
                     df = self.lstData[self.ix]
-                    if df['MP'][1] != df['MP'][2]:  # 포지션 변동시
-                        if df['MP'][1] == 1:
+                    if df['MP'][0] != df['MP'][1]:  # 포지션 변동시
+                        if df['MP'][0] == 1:
                             Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'B', self.amt, 0) # 상품코드, 매수/매도, 계약수, 가격
                             self.logger.info('Buy %s amount ordered', self.amt)
-                        elif df['MP'][1] == -1:
+                        elif df['MP'][0] == -1:
                             Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt, 0)
                             self.logger.info('Sell %s amount ordered', self.amt)

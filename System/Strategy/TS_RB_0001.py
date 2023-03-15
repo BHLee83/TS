@@ -71,7 +71,7 @@ class TS_RB_0001():
         df[strColName1] = Indicator.MA(df['종가'], self.nP1)
         df[strColName2] = Indicator.MA(df['종가'], self.nP2)
         df['MP'] = 0
-        for i in df.index-1:
+        for i in df.index:
             if i < self.nP2:
                 continue
             df.loc[i, 'MP'] = df['MP'][i-1]
