@@ -173,6 +173,7 @@ class TS_RB_0032():
 
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[self.ix]['MP'] = df['MP']
+        self.lstData[self.ix]['AvgVal'] = df['AvgVal']
 
 
     # 전략 실행
