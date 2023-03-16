@@ -162,19 +162,17 @@ class TS_RB_0032():
                 self.fPosLow = min(df['저가'][self.nLoc:i+1])
                 if df['MP'][i] == 1:
                     if self.fPosHigh > df['EntryLv'][i] + df['ATR'][i] * self.nBigProfitATRs:   # Big Profit Stop (setup)
-                        self.fEL_BPS = min(df['LOW'][i-2:i+1])
+                        self.fEL_BPS = min(df['저가'][i-2:i+1])
                     self.fEL_PS = df['EntryLv'][i] - df['ATR'][i] * self.nProtectiveATRs    # Protective Stop (setup)
                     self.fEL_TS = self.fPosHigh - df['ATR'][i] * self.nTrailingATRs # Trailing Stop (setup)
                 if df['MP'][i] == -1:
                     if self.fPosLow < abs(df['EntryLv'][i]) - df['ATR'][i] * self.nBigProfitATRs:
-                        self.fES_BPS = max(df['HIGH'][i-2:i+1])
+                        self.fES_BPS = max(df['고가'][i-2:i+1])
                     self.fES_PS = abs(df['EntryLv'][i]) + df['ATR'][i] * self.nProtectiveATRs
                     self.fES_TS = self.fPosLow + df['ATR'][i] * self.nTrailingATRs
 
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[self.ix]['MP'] = df['MP']
-        self.lstData[self.ix]['AvgVal'] = df['AvgVal']
-        self.lstData[self.ix]['ATR'] = df['ATR']
 
 
     # 전략 실행

@@ -173,7 +173,6 @@ class TS_RB_0036():
 
         df = df.sort_index(ascending=False).reset_index()
         self.lstData[self.ix]['MP'] = df['MP']
-        self.lstData[self.ix]['ATR'] = df['ATR']
 
 
     # 전략 실행
