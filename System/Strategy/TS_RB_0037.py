@@ -143,12 +143,12 @@ class TS_RB_0037():
                         df.loc[0, 'MP'] = -1
                     # Exit
                     if df['MP'][0] == 1 and df['RDV'][1] < 0:
-                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'EL', self.amt_entry, 0)
-                        self.logger.info('ExitLong %s amount ordered', self.amt_entry)
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'EL', self.amt_exit, 0)
+                        self.logger.info('ExitLong %s amount ordered', self.amt_exit)
                         df.loc[0, 'MP'] = 0
                     if df['MP'][0] == -1 and df['RDV'][1] > 0:
-                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'ES', self.amt_entry, 0)
-                        self.logger.info('ExitShort %s amount ordered', self.amt_entry)
+                        Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'ES', self.amt_exit, 0)
+                        self.logger.info('ExitShort %s amount ordered', self.amt_exit)
                         df.loc[0, 'MP'] = 0
 
             # self.npPriceInfo = PriceInfo.copy()
