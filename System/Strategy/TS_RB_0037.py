@@ -77,8 +77,8 @@ class TS_RB_0037():
         
         df.insert(len(df.columns), 'RMA', Indicator.MA(df['종가'], self.nLen))
         df['DRD'] = df['종가'] - df['RMA']
-        df['NDV'] = df['RMA'].rolling(window=self.nLen).sum()
-        df['TDV'] = abs(df['RMA']).rolling(window=self.nLen).sum()
+        df['NDV'] = df['DRD'].rolling(window=self.nLen).sum()
+        df['TDV'] = abs(df['DRD']).rolling(window=self.nLen).sum()
         df['RDV'] = df['NDV'] / df['TDV'] * 100
 
         df['MP'] = 0
