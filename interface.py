@@ -112,6 +112,20 @@ class Interface():
         self.strAcntCode = self.wndIndi.cbAcntCode.currentText()
         self.dfAcntInfo = self.userEnv.getAccount(self.strAcntCode)
 
+        # 종목코드가 있는 상태에서 펀드코드 변경시에도 전략 세팅될 수 있도록 - 김우일 차장 (23.03.15)
+        if self.wndIndi.cbProductCode.currentText() != '':
+            self.lstChkBox = []
+            self.strProductCode = self.wndIndi.cbProductCode.currentText()
+            Strategy.setStrategyInfo(self.strProductCode)
+            if len(Strategy.dfStrategyInfo) != 0:
+                for i in Strategy.dfStrategyInfo.index:
+                    self.lstChkBox.append(QCheckBox())
+                    self.lstChkBox[i].setCheckState(int(Strategy.dfStrategyInfo['use'][i] * 2)) # 2: Checked, 0: Not checked
+                    self.lstChkBox[i].toggled.connect(self.chkbox_toggled)
+                self.setTwStrategyInfoUI()  # 전략 세팅값 확인(UI)
+                self.initPosition()
+            self.initBalance()
+
 
     def initStrategyInfo(self):
         self.wndIndi.twStrategyInfo.setRowCount(0)  # 기존 내용 삭제
