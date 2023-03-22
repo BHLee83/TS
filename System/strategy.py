@@ -2,6 +2,7 @@ from threading import Lock
 import pandas as pd
 import numpy as np
 import datetime as dt
+import math
 import logging
 
 from PyQt5.QtCore import QTimer
@@ -245,10 +246,11 @@ class Strategy(metaclass=SingletonMeta):
 
 
     def setHistData(productCode, period, histData):
-        if len(histData) == 1:
+        df = Strategy.convertNPtoDF(histData)
+        if len(df) == 1:
             for i in Strategy.lstMktData:
                 if (i['PRODUCT_CODE'] == productCode) and (i['PERIOD'] == period):
-                    i['VALUES'] = np.concatenate((histData.copy(), i['VALUES']))
+                    i['VALUES'] = pd.concat([df, i['VALUES']]).reset_index().drop('index', axis=1)
 
         else:
             ret = Strategy.getHistData(productCode, period)
@@ -258,7 +260,14 @@ class Strategy(metaclass=SingletonMeta):
                     # dictData['PRODUCT_N_CODE'] = productNCode
                     dictData['PRODUCT_CODE'] = productCode
                     dictData['PERIOD'] = period
-                    dictData['VALUES'] = histData.copy()
+                    if all((period != 'D', period != 'W', period != 'M')):  # 동시호가 데이터 제거
+                        df['시간'] = df['시간'].astype(int)
+                        t = 1500 + math.ceil(35.0/int(period)) * int(period)
+                        ix = df[(df['시간'] > t) & (df['시간'] < 1545)].index
+                        df = df.drop(ix)
+                        df = df.reset_index()
+                        df = df.drop('index', axis=1)
+                    dictData['VALUES'] = df
                     Strategy.lstMktData.append(dictData)
             
 
@@ -285,7 +294,7 @@ class Strategy(metaclass=SingletonMeta):
     def chkPrice(interface, PriceInfo):
         for i, v in enumerate(Strategy.lstPriceInfo):
             if v['단축코드'] == PriceInfo['단축코드']:
-                if v['체결시간'].decode()[2:4] != PriceInfo['체결시간'].decode()[2:4]:  # min. 이 바뀌면
+                if v['체결시간'][2:4] != PriceInfo['체결시간'][2:4]:  # min. 이 바뀌면
                     Strategy.addToHistData(interface, PriceInfo)
                 Strategy.lstPriceInfo[i] = PriceInfo.copy()
                 return
@@ -295,8 +304,8 @@ class Strategy(metaclass=SingletonMeta):
 
     def addToHistData(interface, PriceInfo):
         for i in Strategy.lstMktData:
-            if i['PRODUCT_CODE'] == PriceInfo['단축코드'].decode():
-                settleMin = int(PriceInfo['체결시간'].decode()[2:4])
+            if i['PRODUCT_CODE'] == PriceInfo['단축코드']:
+                settleMin = int(PriceInfo['체결시간'][2:4])
                 if settleMin == 0:
                     settleMin = 60
 
@@ -322,7 +331,7 @@ class Strategy(metaclass=SingletonMeta):
     def convertNPtoDF(ndarray):
         df = pd.DataFrame(ndarray, columns=ndarray.dtype.names)
         for i in df:    # 신한i Indi특 이진 데이터 Trim
-            if str(df[i][0])[:1] == 'b':
+            if type(df[i][0]) == bytes:
                 df[i] = list(map(lambda x: str(x).split("'")[1], df[i].values))
         
         return df
