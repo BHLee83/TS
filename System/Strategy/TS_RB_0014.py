@@ -65,7 +65,6 @@ class TS_RB_0014():
             if data == False:
                 return pd.DataFrame(None)
         
-        data = Strategy.convertNPtoDF(data)
         return data
 
 
