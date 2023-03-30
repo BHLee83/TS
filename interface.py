@@ -213,8 +213,8 @@ class Interface():
                 my_class = globals()[name]   # 전략 이름의 클래스 지정 (Reflection)
                 self.lstObj_Strategy.append(my_class(Strategy.dfStrategyInfo.loc[i]))   # 클래스 생성 & 초기화
 
-        for i in self.lstObj_Strategy:  # 전략별 과거 데이터 세팅
-            i.createHistData(self)
+        # for i in self.lstObj_Strategy:  # 전략별 과거 데이터 세팅
+        #     i.createHistData(self)
 
         start = time.process_time()
         for i in self.lstObj_Strategy:  # 전략 실행 (최초 1회)
@@ -234,8 +234,9 @@ class Interface():
 
     # 3. 전략 실행 (실시간)
     def executeStrategy(self, PriceInfo):
-        Strategy.chkPrice(self, PriceInfo)  # 분봉 완성 check
-
+        # Strategy.chkPrice(self, PriceInfo)  # 분봉 완성 check
+        Strategy.setPrice(PriceInfo)  # 실시간 가격 정보 세팅
+        
         start = time.process_time()
         for i in self.lstObj_Strategy:
             i.execute(PriceInfo) # 3. 전략 실행
@@ -265,8 +266,8 @@ class Interface():
             Strategy.executeOrder(self, PriceInfo)  # 주문하고
             Strategy.dictOrderInfo[Strategy.nOrderCnt] = Strategy.lstOrderInfo.copy()   # 주문내역 별도 보관(넘버링)
             Strategy.dictOrderInfo_Net[Strategy.nOrderCnt] = Strategy.lstOrderInfo_Net.copy()
-            Strategy.lstOrderInfo.clear()   # 주문내역 초기화
-            Strategy.lstOrderInfo_Net.clear()
+            # Strategy.lstOrderInfo.clear()   # 주문내역 초기화
+            # Strategy.lstOrderInfo_Net.clear()
             Strategy.nOrderCnt += 1
 
             if Strategy.nOrderCnt == 1: # 최초 주문후
@@ -357,6 +358,8 @@ class Interface():
                         self.updatePosition(ordInfo)    # 포지션 업데이트
                         self.inputOrder2DB(ordInfo) # 거래내역 DB에 쓰기
             self.inputPos2DB()  # 포지션 DB에 쓰기
+            Strategy.lstOrderInfo.clear()   # 주문내역 초기화
+            Strategy.lstOrderInfo_Net.clear()
         else:
             # TODO: 일부 체결된 경우 처리 필요
             pass
@@ -481,11 +484,11 @@ class Interface():
 
 
     def inputOrder2DB(self, ordInfo):
-        strQuery = f"SELECT COUNT(*) AS cnt FROM transactions WHERE base_datetime LIKE '{self.dtToday}%'"
+        strQuery = f"SELECT COUNT(*) AS cnt FROM transactions WHERE base_datetime >= '{self.dtToday}'"
         ret = Strategy.instDB.query_to_df(strQuery, 1)
         strTRnum = self.strStrategyClass[:1]    # ex) 'S'
         strTRnum += self.dtToday.strftime('%y%m%d') # Syymmdd ex) 'S221103'
-        strTRnum += '_' + format(int(ret[0]['cnt'])+1, '04')    # Syymmdd_xxxx ex) 'S221103_0012'
+        strTRnum += '_' + format(int(ret['CNT'][0])+1, '04')    # Syymmdd_xxxx ex) 'S221103_0012'
 
         dictTrInfo = {}
         dictTrInfo['BASE_DATETIME'] = self.dtToday.strftime('%Y-%m-%d') + ' ' + ordInfo['OCCUR_TIME'].strftime('%H:%M:%S')
@@ -506,7 +509,7 @@ class Interface():
         dictTrInfo['TR_COST'] = 0
         dictTrInfo['FUND_CODE'] = self.strAcntCode
 
-        strQuery = f'INSERT INTO transactions VALUES {tuple(dictTrInfo.values())}'
+        strQuery = f'INSERT INTO transactions COLUMNS (base_datetime, strategy_class, tr_number, strategy_id, asset_class, asset_name, asset_code, asset_type, maturity, underlying_id, settle_curncy, tr_direction, tr_amount, tr_price, tr_cost, fund_code) VALUES {tuple(dictTrInfo.values())}'
         Strategy.instDB.execute(strQuery)
         Strategy.instDB.commit()
 
@@ -529,7 +532,7 @@ class Interface():
                 Strategy.instDB.execute(strQuery)
             # 쓰기
             Strategy.dfPosition['BASE_DATE'] = self.dtToday
-            Strategy.instDB.executemany("INSERT INTO position VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12, :13)", Strategy.dfPosition.drop('position', axis=1).values.tolist())
+            Strategy.instDB.executemany("INSERT INTO position COLUMNS (base_date, strategy_class, strategy_id, asset_class, asset_name, asset_code, asset_type, maturity, settle_curncy, pos_direction, pos_amount, pos_price, fund_code) VALUES (:1, :2, :3, :4, :5, :8, :6, :7, :9, :10, :11, :12, :13)", Strategy.dfPosition.drop('POSITION', axis=1).values.tolist())
             Strategy.instDB.commit()            
 
 

@@ -9,7 +9,6 @@ class Price():
 
     def __init__(self, instInterface):
         self.instInterface = instInterface
-        # self.lstObj_Strategy = lstObj_Strategy
         
         # 인디의 TR을 처리할 변수를 생성합니다.
         self.IndiTR = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")

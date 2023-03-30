@@ -118,7 +118,7 @@ class Strategy(metaclass=SingletonMeta):
         Strategy.dfOrderInfo_All = Strategy.dfOrderInfo_All.append(dictOrder, ignore_index=True)
         if len(Strategy.dfOrderInfo_All) > 1:
             if Strategy.dfOrderInfo_All['PRODUCT'].iloc[-1] == Strategy.dfOrderInfo_All['PRODUCT'].iloc[-2]:
-                Strategy.dfOrderInfo_All['TIME_DIFF'].iloc[-1] = Strategy.dfOrderInfo_All['OCCUR_TIME'].iloc[-1] - Strategy.dfOrderInfo_All['OCCUR_TIME'].iloc[-2]
+                Strategy.dfOrderInfo_All.loc[len(Strategy.dfOrderInfo_All)-1, 'TIME_DIFF'] = Strategy.dfOrderInfo_All['OCCUR_TIME'].iloc[-1] - Strategy.dfOrderInfo_All['OCCUR_TIME'].iloc[-2]
 
         # 1. 상품별 1회 최대 주문 수량 초과
         if dictOrder['QUANTITY'] > \
@@ -208,7 +208,7 @@ class Strategy(metaclass=SingletonMeta):
 
         interface.setTwOrderInfoUI()    # 전략별 주문 요청내역 출력
         Strategy.timer = QTimer()
-        Strategy.timer.singleShot(2000, interface.event_loop.quit)
+        Strategy.timer.singleShot(3000, interface.event_loop.quit)
         interface.event_loop.exec_()
 
         
@@ -245,50 +245,140 @@ class Strategy(metaclass=SingletonMeta):
         pass
 
 
-    def setHistData(productCode, period, histData):
-        df = Strategy.convertNPtoDF(histData)
-        if len(df) == 1:
-            for i in Strategy.lstMktData:
-                if (i['PRODUCT_CODE'] == productCode) and (i['PERIOD'] == period):
-                    i['VALUES'] = pd.concat([df, i['VALUES']]).reset_index().drop('index', axis=1)
+    def setHistData(productCode, timeframe, histData):
+        if type(histData) == np.ndarray:    # indi 데이터인 경우
+            df = Strategy.convertNPtoDF(histData)   # 타입 변환
+            if all([len(df) > 2, timeframe != 'D', timeframe != 'W', timeframe != 'M']):  # 분봉인 경우 동시호가 데이터 제거
+                df['시간'] = df['시간'].astype(int)
+                t = 1500 + math.ceil(35.0/int(timeframe)) * int(timeframe)
+                ix = df[(df['시간'] > t) & (df['시간'] < 1545)].index
+                df = df.drop(ix)
+            df = df.sort_index(ascending=False).reset_index().drop('index', axis=1)
+        else:   # DB 데이터인 경우
+            df = histData
+        
+        for i in Strategy.lstMktData:
+            if (i['PRODUCT_CODE'] == productCode) and (i['TIMEFRAME'] == timeframe):    # 기존 데이터 있으면
+                if len(df) <= 2:    # 추가 데이터인 경우(분봉 등) Add
+                    i['VALUES'] = pd.concat([df.iloc[0], i['VALUES']]).reset_index().drop('index', axis=1)
+                    return True
+                else:   # TODO: 기존 데이터가 더 적은 경우인지 확인하고 덮어쓸지 판단해야 함
+                    return False
+                
+        # 기존 데이터 없으면 추가
+        dictData = {}
+        # dictData['PRODUCT_N_CODE'] = productNCode
+        dictData['PRODUCT_CODE'] = productCode
+        dictData['TIMEFRAME'] = timeframe
+        dictData['VALUES'] = df
+        Strategy.lstMktData.append(dictData)
 
-        else:
-            ret = Strategy.getHistData(productCode, period)
-            if type(ret) == bool:
-                if ret == False:
-                    dictData = {}
-                    # dictData['PRODUCT_N_CODE'] = productNCode
-                    dictData['PRODUCT_CODE'] = productCode
-                    dictData['PERIOD'] = period
-                    if all((period != 'D', period != 'W', period != 'M')):  # 동시호가 데이터 제거
-                        df['시간'] = df['시간'].astype(int)
-                        t = 1500 + math.ceil(35.0/int(period)) * int(period)
-                        ix = df[(df['시간'] > t) & (df['시간'] < 1545)].index
-                        df = df.drop(ix)
-                        df = df.reset_index()
-                        df = df.drop('index', axis=1)
-                    dictData['VALUES'] = df
-                    Strategy.lstMktData.append(dictData)
+        return True
             
 
-    def getHistData(productCode, period):
+    def getHistData(productCode, timeframe, period:int=300):
+        # 1. 리스트에 있으면 넘겨주고
         for i in Strategy.lstMktData:
-            if (i['PRODUCT_CODE'] == productCode) and (i['PERIOD'] == period):
-                return i['VALUES']
-        
-        return False
+            if (i['PRODUCT_CODE'] == productCode) and (i['TIMEFRAME'] == timeframe):
+                return i['VALUES'].iloc[-period-1:].reset_index().drop('index', axis=1)
 
+        # 2. 없으면 DB에서 조회 (조회는 갯수 상관없이 전체 조회)
+        underyling_id = Strategy.dfCFutMst['기초자산ID'][Strategy.dfCFutMst['단축코드']==productCode].drop_duplicates().values[0]
+        asset_name = Strategy.dfProductInfo['ASSET_NAME'][Strategy.dfProductInfo['UNDERLYING_ID']==underyling_id].values[0]
+        table = 'market_data'
+        cond = ''
+        key = 'base_date'
+        if all([timeframe != 'D', timeframe != 'W', timeframe != 'M']): # 분봉인 경우와 일봉 이상인 경우 테이블 나눠짐 (틱은 현재 고려 X)
+            table += "_minute"
+            cond += "AND timeframe = '" + timeframe + "'"
+            key += "time"
+        strQuery = f"SELECT * FROM {table} WHERE asset_name = '{asset_name}' AND maturity='0000' " + cond + f" ORDER BY {key}" # 0000: 연결선물
+        dfRet = Strategy.instDB.query_to_df(strQuery, 9999)
+        if len(dfRet) != 0:
+            df = pd.DataFrame(None)
+            df['일자'] = pd.to_datetime(dfRet[key.upper()]).dt.strftime('%Y%m%d')   # indi 형식으로 맞춤
+            df['시간'] = pd.to_datetime(dfRet[key.upper()]).dt.strftime('%H%M%S')
+            df['시가'] = dfRet['OPEN_PRICE']
+            df['고가'] = dfRet['HIGH_PRICE']
+            df['저가'] = dfRet['LOW_PRICE']
+            df['종가'] = dfRet['CLOSE_PRICE']
+            df['단위거래량'] = dfRet['VOLUME']
+            if df.iloc[-1]['일자'] != Strategy.strToday:    # 계산 편의용 처리
+                df.loc[len(df)] = df.iloc[-1]
+                df.loc[len(df)-1, '일자'] = Strategy.strToday
+            if df.iloc[-1]['시간'] != '000000':
+                df.loc[len(df)-1, '시간'] = df.iloc[df[df['시간']==df.iloc[-1]['시간']].index[0]+1]['시간']
+            Strategy.setHistData(productCode, timeframe, df)
+            return df.iloc[-period-1:].reset_index().drop('index', axis=1)
+        else:   # DB에도 없으면
+            pass    # TODO: indi 조회
+            return False
     
-    def getPosition(id:str, name:str, type:str):
+
+    def getPosition(id:str, code:str, type:str):
         if Strategy.dfPosition.empty:
             return 0
         else:
             try:
                 return Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==id) \
-                        & (Strategy.dfPosition['ASSET_NAME']==name) \
+                        & (Strategy.dfPosition['ASSET_CODE']==code) \
                         & (Strategy.dfPosition['ASSET_TYPE']==type)].values[0]
             except:
                 return 0
+
+
+    def getPrice(PriceInfo):
+        dictData = {}
+        dictData['일자'] = Strategy.strToday
+        dictData['시간'] = PriceInfo['체결시간'].decode()
+        dictData['시가'] = PriceInfo['시가']
+        dictData['고가'] = PriceInfo['고가']
+        dictData['저가'] = PriceInfo['저가']
+        dictData['종가'] = PriceInfo['현재가']
+        dictData['단위거래량'] = PriceInfo['누적거래량']    # TODO: 분봉의 경우 누적/단위 거래량 구분해야함
+
+        return dictData
+
+
+    def setPrice(PriceInfo):
+        for i in Strategy.lstMktData:   # 데이터 리스트에서
+            if i['PRODUCT_CODE'] == PriceInfo['단축코드']:  # 종목 찾아
+                if i['TIMEFRAME'] == 'D':   # 일봉인 경우
+                    if i['VALUES'].iloc[-1]['일자'] != Strategy.strToday:   # 당일자 정보 없으면
+                        i['VALUES'].loc[len(i['VALUES'])] = Strategy.getPrice(PriceInfo)    # 신규 추가
+                    else:   # 있으면
+                        i['VALUES'].loc[len(i['VALUES'])-1] = Strategy.getPrice(PriceInfo) # 업데이트
+                    i['VALUES'].loc[len(i['VALUES'])-1, '시간'] = '000000'
+                else:   # 분봉인 경우 (주봉/월봉 일단 제외)
+                    if PriceInfo['체결시간'].decode() == '154500':
+                        continue
+
+                    tf = int(i['TIMEFRAME'])
+                    h = int(PriceInfo['체결시간'][0:2])
+                    m = int(PriceInfo['체결시간'][2:4])
+                    m = int(m / tf) * tf + tf
+                    if m >= 60:
+                        h += 1
+                        m -= 60
+                    t = format(h, '02') + format(m, '02') + '00'
+                    if i['VALUES'].iloc[-1]['일자'] != Strategy.strToday:   # 당일자 정보 없으면
+                        i['VALUES'].loc[len(i['VALUES'])] = Strategy.getPrice(PriceInfo)    # 신규 추가
+                        i['VALUES'].loc[len(i['VALUES'])-1, '시간'] = t
+                    else:   # 있는데
+                        if i['VALUES'].iloc[-1]['시간'] != t:   # 최신 분봉이 아니면
+                            i['VALUES'].loc[len(i['VALUES'])] = Strategy.getPrice(PriceInfo)    # 신규 추가
+                            l = len(i['VALUES']) - 1
+                            i['VALUES'].loc[l, '시간'] = t
+                            i['VALUES'].loc[l, '시가'] = PriceInfo['현재가']
+                            i['VALUES'].loc[l, '고가'] = PriceInfo['현재가']
+                            i['VALUES'].loc[l, '저가'] = PriceInfo['현재가']
+                        else:   # 있으면 업데이트
+                            l = len(i['VALUES']) - 1
+                            if i['VALUES'].loc[l, '고가'] < PriceInfo['현재가']:
+                                i['VALUES'].loc[l, '고가'] = PriceInfo['현재가']
+                            if i['VALUES'].loc[l, '저가'] > PriceInfo['현재가']:
+                                i['VALUES'].loc[l, '저가'] = PriceInfo['현재가']
+                            i['VALUES'].loc[l, '종가'] = PriceInfo['현재가']
 
 
     def chkPrice(interface, PriceInfo):
@@ -309,16 +399,14 @@ class Strategy(metaclass=SingletonMeta):
                 if settleMin == 0:
                     settleMin = 60
 
-                try:
-                    p = int(i['PERIOD'])
-                except:
-                    continue
+                if all([i['TIMEFRAME'] != 'D', i['TIMEFRAME'] != 'W', i['TIMEFRAME'] != 'M']):
+                    p = int(i['TIMEFRAME'])
 
-                if settleMin % p == 0:
-                    interface.price.rqHistData(i['PRODUCT_CODE'], '1', i['PERIOD'], Strategy.strStartDate, Strategy.strEndDate, '1')
-                    Strategy.timer = QTimer()
-                    Strategy.timer.singleShot(2000, interface.event_loop.quit)
-                    interface.event_loop.exec_()
+                    if settleMin % p == 0:
+                        interface.price.rqHistData(i['PRODUCT_CODE'], '1', i['TIMEFRAME'], Strategy.strStartDate, Strategy.strEndDate, '2')
+                        # Strategy.timer = QTimer()
+                        # Strategy.timer.singleShot(2000, interface.event_loop.quit)
+                        # interface.event_loop.exec_()
 
 
     def convertTimeFrame(timeFrame, timeIntrv): # TimeFrame: 'M', 'W', 'D', '1' / TimeInterval(min): '5', '10', ...

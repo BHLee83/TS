@@ -1,6 +1,5 @@
 from PyQt5.QAxContainer import *
 import numpy as np
-# from System.strategyRT import StrategyRT
 
 
 class PriceRT():
