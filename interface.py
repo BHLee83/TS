@@ -359,12 +359,14 @@ class Interface():
                             ordInfo['SETTLE_PRICE'] = float(DATA['체결단가']) # 체결정보 업데이트
                             self.updatePosition(ordInfo)    # 포지션 업데이트
                             self.inputOrder2DB(ordInfo) # 거래내역 DB에 쓰기
+            self.setTwSettleInfoUI(DATA)
+            logging.info('주문 체결')
+            self.setTwPositionInfoUI()  # 포지션 현황 출력
+            logging.info('포지션 업데이트')
             self.inputPos2DB()  # 포지션 DB에 쓰기
         else:
             # TODO: 일부 체결된 경우 처리 필요
             pass
-        logging.info('주문 체결')
-        self.setTwSettleInfoUI(DATA)
 
 
     # 포지션 업데이트
@@ -426,9 +428,6 @@ class Interface():
 
                     if i == Strategy.dfPosition.last_valid_index(): # 없으면 신규 추가
                         self.insertPosition(ordInfo)
-
-        logging.info('포지션 업데이트')
-        self.setTwPositionInfoUI()  # 포지션 현황 출력
     
 
     def insertPosition(self, ordInfo):
@@ -488,7 +487,8 @@ class Interface():
         ret = Strategy.instDB.query_to_df(strQuery, 1)
         strTRnum = self.strStrategyClass[:1]    # ex) 'S'
         strTRnum += self.dtToday.strftime('%y%m%d') # Syymmdd ex) 'S221103'
-        strTRnum += '_' + format(int(ret['CNT'][0])+1, '04')    # Syymmdd_xxxx ex) 'S221103_0012'
+        # strTRnum += '_' + format(int(ret['CNT'][0])+1, '04')    # Syymmdd_xxxx ex) 'S221103_0012'
+        strTRnum += '_' + format(int(ret.loc[0, 'CNT'])+1, '04')    # Syymmdd_xxxx ex) 'S221103_0012'
 
         dictTrInfo = {}
         dictTrInfo['BASE_DATETIME'] = self.dtToday.strftime('%Y-%m-%d') + ' ' + ordInfo['OCCUR_TIME'].strftime('%H:%M:%S')
