@@ -207,9 +207,9 @@ class Strategy(metaclass=SingletonMeta):
                     return ret
 
         interface.setTwOrderInfoUI()    # 전략별 주문 요청내역 출력
-        Strategy.timer = QTimer()
-        Strategy.timer.singleShot(3000, interface.event_loop.quit)
-        interface.event_loop.exec_()
+        # Strategy.timer = QTimer()
+        # Strategy.timer.singleShot(3000, interface.event_loop.quit)
+        # interface.event_loop.exec_()
 
         
     def nettingOrder(): # 주문 통합하기

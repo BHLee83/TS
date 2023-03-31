@@ -111,7 +111,7 @@ class Interface():
             self.event_loop.exec_()
         self.strAcntCode = self.wndIndi.cbAcntCode.currentText()
         self.dfAcntInfo = self.userEnv.getAccount(self.strAcntCode)
-
+        
         # 종목코드가 있는 상태에서 펀드코드 변경시에도 전략 세팅될 수 있도록 - 김우일 차장 (23.03.15)
         if self.wndIndi.cbProductCode.currentText() != '':
             self.lstChkBox = []
@@ -266,8 +266,8 @@ class Interface():
             Strategy.executeOrder(self, PriceInfo)  # 주문하고
             Strategy.dictOrderInfo[Strategy.nOrderCnt] = Strategy.lstOrderInfo.copy()   # 주문내역 별도 보관(넘버링)
             Strategy.dictOrderInfo_Net[Strategy.nOrderCnt] = Strategy.lstOrderInfo_Net.copy()
-            # Strategy.lstOrderInfo.clear()   # 주문내역 초기화
-            # Strategy.lstOrderInfo_Net.clear()
+            Strategy.lstOrderInfo.clear()   # 주문내역 초기화
+            Strategy.lstOrderInfo_Net.clear()
             Strategy.nOrderCnt += 1
 
             if Strategy.nOrderCnt == 1: # 최초 주문후
@@ -349,17 +349,17 @@ class Interface():
 
     def setSettleInfo(self, DATA):
         if int(DATA['미체결수량']) == 0:    # 주문수량 전량 체결
-            for i in Strategy.lstOrderInfo_Net:
-                if i['주문번호'] == int(DATA['주문번호']):   # 주문번호로 주문내역 찾고
-                    lstIDs = i['NET_ID'].split(',')
-                    for j in lstIDs:    # 네팅되기 전 주문내역 찾아
-                        ordInfo = Strategy.lstOrderInfo[int(j)]
-                        ordInfo['SETTLE_PRICE'] = float(DATA['체결단가']) # 체결정보 업데이트
-                        self.updatePosition(ordInfo)    # 포지션 업데이트
-                        self.inputOrder2DB(ordInfo) # 거래내역 DB에 쓰기
+            for i in Strategy.dictOrderInfo_Net:
+                for j in Strategy.dictOrderInfo_Net[i]:
+                    if j['주문번호'] == int(DATA['주문번호']):   # 주문번호로 주문내역 찾고
+                        lstIDs = j['NET_ID'].split(',')
+                        for k in lstIDs:    # 네팅되기 전 주문내역 찾아
+                            lstOrderInfo = Strategy.dictOrderInfo[i]
+                            ordInfo = lstOrderInfo[int(k)]
+                            ordInfo['SETTLE_PRICE'] = float(DATA['체결단가']) # 체결정보 업데이트
+                            self.updatePosition(ordInfo)    # 포지션 업데이트
+                            self.inputOrder2DB(ordInfo) # 거래내역 DB에 쓰기
             self.inputPos2DB()  # 포지션 DB에 쓰기
-            Strategy.lstOrderInfo.clear()   # 주문내역 초기화
-            Strategy.lstOrderInfo_Net.clear()
         else:
             # TODO: 일부 체결된 경우 처리 필요
             pass
@@ -533,7 +533,7 @@ class Interface():
             # 쓰기
             Strategy.dfPosition['BASE_DATE'] = self.dtToday
             Strategy.instDB.executemany("INSERT INTO position COLUMNS (base_date, strategy_class, strategy_id, asset_class, asset_name, asset_code, asset_type, maturity, settle_curncy, pos_direction, pos_amount, pos_price, fund_code) VALUES (:1, :2, :3, :4, :5, :8, :6, :7, :9, :10, :11, :12, :13)", Strategy.dfPosition.drop('POSITION', axis=1).values.tolist())
-            Strategy.instDB.commit()            
+            Strategy.instDB.commit()
 
 
     # 이하 출력부분
