@@ -320,9 +320,13 @@ class Strategy(metaclass=SingletonMeta):
             return 0
         else:
             try:
-                return Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==id) \
+                df = Strategy.dfPosition['POSITION'][(Strategy.dfPosition['STRATEGY_ID']==id) \
                         & (Strategy.dfPosition['ASSET_CODE']==code) \
-                        & (Strategy.dfPosition['ASSET_TYPE']==type)].values[0]
+                        & (Strategy.dfPosition['ASSET_TYPE']==type)]
+                if df.empty:
+                    return 0
+                else:
+                    return df.values[0]
             except:
                 return 0
 
