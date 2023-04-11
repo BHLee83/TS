@@ -2,6 +2,7 @@ import importlib
 import numpy as np
 import pandas as pd
 import datetime as dt
+import os
 import time
 import logging
 from datetime import timedelta
@@ -30,6 +31,7 @@ class Interface():
         self.wndIndi = IndiWindow
         self.boolSysReady = False
         self.event_loop = QEventLoop()
+        self.main_path = os.path.dirname(os.path.abspath(__file__))
         self.strStrategyPath = 'System.Strategy'
         self.strStrategyClass = 'System'
         self.strSettleCrncy = 'KRW'
@@ -55,7 +57,8 @@ class Interface():
         stream_handler = logging.StreamHandler()    # log 출력
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
-        file_handler = logging.FileHandler('Log\\' + self.strToday + '.log')    # log를 파일에 출력
+        log_path = os.path.join(self.main_path, 'Log\\' + self.strToday + '.log')
+        file_handler = logging.FileHandler(log_path)    # log를 파일에 출력
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
@@ -252,7 +255,8 @@ class Interface():
         if now >= self.qtTarget:
             for i in self.lstObj_Strategy:
                 try:
-                    i.lastProc()
+                    if i.isON == False:
+                        i.lastProc()
                 except:
                     pass
 
@@ -532,7 +536,7 @@ class Interface():
                 Strategy.instDB.execute(strQuery)
             # 쓰기
             Strategy.dfPosition['BASE_DATE'] = self.dtToday
-            Strategy.instDB.executemany("INSERT INTO position COLUMNS (base_date, strategy_class, strategy_id, asset_class, asset_name, asset_code, asset_type, maturity, settle_curncy, pos_direction, pos_amount, pos_price, fund_code) VALUES (:1, :2, :3, :4, :5, :8, :6, :7, :9, :10, :11, :12, :13)", Strategy.dfPosition.drop('POSITION', axis=1).values.tolist())
+            Strategy.instDB.executemany("INSERT INTO position COLUMNS (base_date, strategy_class, strategy_id, asset_class, asset_name, asset_code, asset_type, maturity, settle_curncy, pos_direction, pos_amount, pos_price, fund_code) VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12, :13)", Strategy.dfPosition.drop('POSITION', axis=1).values.tolist())
             Strategy.instDB.commit()
 
 

@@ -1,6 +1,7 @@
 from DB.config import Config
 import pandas_oracle.tools as pt
 import pymysql
+import os
  
 class mysqlDB:
     def __init__(self, dbname):
@@ -56,7 +57,8 @@ class mysqlDB:
 class oracleDB:
     def __init__(self, dbname):
         if dbname.lower() == 'oradb1':
-            self._conn=pt.open_connection('./DB/config.yml')
+            db_path = os.path.dirname(os.path.abspath(__file__))
+            self._conn=pt.open_connection(os.path.join(db_path, 'config.yml'))
         self._cursor = self._conn.cursor()
  
     def __enter__(self):
