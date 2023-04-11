@@ -62,7 +62,7 @@ class TS_RB_0027():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nCCILen+self.nAvgLen)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], int(400/int(self.lstTimeIntrvl[self.ix]))+self.nCCILen+self.nAvgLen)
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
@@ -84,10 +84,10 @@ class TS_RB_0027():
         df['AvgCCI'] = cci.rolling(window=self.nAvgLen).mean()
 
         df['MP'] = 0
-        df['EntryLv'] = 0
-        df['ExitLv'] = 0
-        df['BuySetup'] = 0
-        df['SellSetup'] = 0
+        df['EntryLv'] = 0.0
+        df['ExitLv'] = 0.0
+        df['BuySetup'] = 0.0
+        df['SellSetup'] = 0.0
         dfSignal = pd.DataFrame(None, columns=df.columns)
         for i in df.index:
             if i < self.nCCILen:
@@ -178,21 +178,21 @@ class TS_RB_0027():
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
         (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
             self.common()
-            
+        
         self.chkPos()
         df = self.lstData[self.ix]
 
         # Entry
         if self.fBuyPrice != 0.0:
             if (self.nPosition <= 0) and (df.iloc[-1]['MP'] != 1):
-                if self.npPriceInfo['현재가'] < self.fBuyPrice and PriceInfo['현재가'] >= self.fBuyPrice:
+                if self.npPriceInfo['현재가'] <= self.fBuyPrice and PriceInfo['현재가'] >= self.fBuyPrice:
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = 1
                     self.fBuyPrice = 0.0
                     self.logger.info('Buy %s amount ordered', self.amt_entry)
         if self.fSellPrice != 0.0:
             if (self.nPosition >= 0) and (df.iloc[-1]['MP'] != -1):
-                if self.npPriceInfo['현재가'] > self.fSellPrice and PriceInfo['현재가'] <= self.fSellPrice:
+                if self.npPriceInfo['현재가'] >= self.fSellPrice and PriceInfo['현재가'] <= self.fSellPrice:
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = -1
                     self.fSellPrice = 0.0
@@ -201,13 +201,13 @@ class TS_RB_0027():
         # Exit
         if self.fStopPrice != 0.0:
             if (self.nPosition > 0) and (df.iloc[-1]['MP'] == 1):
-                if self.npPriceInfo['현재가'] > self.fStopPrice and PriceInfo['현재가'] <= self.fStopPrice:
+                if self.npPriceInfo['현재가'] >= self.fStopPrice and PriceInfo['현재가'] <= self.fStopPrice:
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = 0
                     self.fStopPrice = 0.0
                     self.logger.info('ExitLong %s amount ordered', self.amt_exit)
             if (self.nPosition < 0) and (df.iloc[-1]['MP'] == -1):
-                if self.npPriceInfo['현재가'] < self.fStopPrice and PriceInfo['현재가'] >= self.fStopPrice:
+                if self.npPriceInfo['현재가'] <= self.fStopPrice and PriceInfo['현재가'] >= self.fStopPrice:
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = 0
                     self.fStopPrice = 0.0

@@ -1,9 +1,5 @@
 # 타임프레임: 5분봉
-# - Setup: 장 시작 후 InitMin 부터 15시 이전 까지만 거래
-# - Entry
-#   Long(Short): InitMin 이내의 고(저)가 돌파시
-# - Exit
-#   EL(ES): 매수(매도) 진입 이후 매도(매수) 조건 만족시
+# - Setup: 
 # 수수료: 0.006%
 # 슬리피지: 0.05pt
 
@@ -68,7 +64,7 @@ class TS_RB_0033():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nSLen+2)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], int(400/int(self.lstTimeIntrvl[self.ix]))+self.nSLen)
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
@@ -95,8 +91,8 @@ class TS_RB_0033():
         df['ADXVal'] = Indicator.ADX(df['고가'], df['저가'], df['종가'], self.nADXLen)
 
         df['MP'] = 0
-        df['EntryLv'] = 0
-        df['ExitLv'] = 0
+        df['EntryLv'] = 0.0
+        df['ExitLv'] = 0.0
         dfSignal = pd.DataFrame(None, columns=df.columns)
         for i in df.index-1:
             if i < self.nSLen:
@@ -133,46 +129,50 @@ class TS_RB_0033():
                 continue
 
             # Entry
-            if self.fBuyPrice1 != 0.0 and df['고가'][i] >= self.fBuyPrice1:    # execution
-                if df['시가'][i] > self.fBuyPrice1:
-                    df.loc[i, 'EntryLv'] = df['시가'][i]
-                else:
-                    df.loc[i, 'EntryLv'] = self.fBuyPrice1
-                if df['MP'][i-1] < 0:
-                    df.loc[i, 'MP'] = 1
-                else:
-                    df.loc[i, 'MP'] += 1
-                self.fBuyPrice1 = 0.0
-            if self.fBuyPrice2 != 0.0 and df['고가'][i] >= self.fBuyPrice2:
-                if df['시가'][i] > self.fBuyPrice2:
-                    df.loc[i, 'EntryLv'] = df['시가'][i]
-                else:
-                    df.loc[i, 'EntryLv'] = self.fBuyPrice2
-                if df['MP'][i-1] < 0:
-                    df.loc[i, 'MP'] = 1
-                else:
-                    df.loc[i, 'MP'] += 1
-                self.fBuyPrice2 = 0.0
-            if self.fSellPrice1 != 0.0 and df['저가'][i] <= self.fSellPrice1:
-                if df['시가'][i] < self.fSellPrice1:
-                    df.loc[i, 'EntryLv'] = df['시가'][i]
-                else:
-                    df.loc[i, 'EntryLv'] = self.fSellPrice1
-                if df['MP'][i-1] > 0:
-                    df.loc[i, 'MP'] = -1
-                else:
-                    df.loc[i, 'MP'] -= 1
-                self.fSellPrice1 = 0.0
-            if self.fSellPrice2 != 0.0 and df['저가'][i] <= self.fSellPrice2:
-                if df['시가'][i] < self.fSellPrice2:
-                    df.loc[i, 'EntryLv'] = df['시가'][i]
-                else:
-                    df.loc[i, 'EntryLv'] = self.fSellPrice2
-                if df['MP'][i-1] > 0:
-                    df.loc[i, 'MP'] = -1
-                else:
-                    df.loc[i, 'MP'] -= 1
-                self.fSellPrice2 = 0.0
+            if df['MP'][i] <= 0:
+                if self.fBuyPrice1 != 0.0 and df['고가'][i] >= self.fBuyPrice1:    # execution
+                    if df['시가'][i] > self.fBuyPrice1:
+                        df.loc[i, 'EntryLv'] = df['시가'][i]
+                    else:
+                        df.loc[i, 'EntryLv'] = self.fBuyPrice1
+                    if df['MP'][i-1] < 0:
+                        df.loc[i, 'MP'] = 1
+                    else:
+                        df.loc[i, 'MP'] += 1
+                    self.fBuyPrice1 = 0.0
+            else:
+                if self.fBuyPrice2 != 0.0 and df['고가'][i] >= self.fBuyPrice2:
+                    if df['시가'][i] > self.fBuyPrice2:
+                        df.loc[i, 'EntryLv'] = df['시가'][i]
+                    else:
+                        df.loc[i, 'EntryLv'] = self.fBuyPrice2
+                    if df['MP'][i-1] < 0:
+                        df.loc[i, 'MP'] = 1
+                    else:
+                        df.loc[i, 'MP'] += 1
+                    self.fBuyPrice2 = 0.0
+            if df['MP'][i] >= 0:
+                if self.fSellPrice1 != 0.0 and df['저가'][i] <= self.fSellPrice1:
+                    if df['시가'][i] < self.fSellPrice1:
+                        df.loc[i, 'EntryLv'] = df['시가'][i]
+                    else:
+                        df.loc[i, 'EntryLv'] = self.fSellPrice1
+                    if df['MP'][i-1] > 0:
+                        df.loc[i, 'MP'] = -1
+                    else:
+                        df.loc[i, 'MP'] -= 1
+                    self.fSellPrice1 = 0.0
+            else:
+                if self.fSellPrice2 != 0.0 and df['저가'][i] <= self.fSellPrice2:
+                    if df['시가'][i] < self.fSellPrice2:
+                        df.loc[i, 'EntryLv'] = df['시가'][i]
+                    else:
+                        df.loc[i, 'EntryLv'] = self.fSellPrice2
+                    if df['MP'][i-1] > 0:
+                        df.loc[i, 'MP'] = -1
+                    else:
+                        df.loc[i, 'MP'] -= 1
+                    self.fSellPrice2 = 0.0
             
             if (self.bLSetup and df['MP'][i] < 1) or (self.bBFlag and abs(df['MP'][i]) < 3):    # setup
                 if df['MP'][i] < 1:
@@ -184,7 +184,7 @@ class TS_RB_0033():
                     self.fSellPrice1 = df['저가'][i] - 1
                 else:
                     self.fSellPrice2 = df['TRIA1'][i] - 1
-            
+
             # Exit
             if df['MP'][i-1] > 0:    # execution
                 if self.fEL != 0.0 and df['저가'][i] <= self.fEL:
@@ -216,7 +216,9 @@ class TS_RB_0033():
     # 전략 실행
     def execute(self, PriceInfo):
         if type(PriceInfo) == int:  # 최초 실행시
-            return self.common()
+            self.common()
+            self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
+            return
         
         if self.npPriceInfo == None:    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
@@ -225,22 +227,22 @@ class TS_RB_0033():
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
         (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
             self.common()
-            df.loc[len(df)-1, 'MP'] = df.iloc[-2]['MP']
+            self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             
         self.chkPos()
         df = self.lstData[self.ix]
-        
+
         # Entry
         if self.fBuyPrice1 != 0.0:
             if (self.nPosition <= 0) and (df.iloc[-1]['MP'] <= 0):
-                if (self.npPriceInfo['현재가'] < self.fBuyPrice1) and (PriceInfo['현재가'] >= self.fBuyPrice1):
+                if (self.npPriceInfo['현재가'] <= self.fBuyPrice1) and (PriceInfo['현재가'] >= self.fBuyPrice1):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = 1
                     self.fBuyPrice1 = 0.0
                     self.logger.info('Buy %s amount ordered', self.amt_entry)
         if self.fBuyPrice2 != 0.0:
             if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0):
-                if (self.npPriceInfo['현재가'] < self.fBuyPrice2) and (PriceInfo['현재가'] >= self.fBuyPrice2):
+                if (self.npPriceInfo['현재가'] <= self.fBuyPrice2) and (PriceInfo['현재가'] >= self.fBuyPrice2):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.lstTrUnit[self.ix], PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] += 1
                     self.fBuyPrice2 = 0.0
@@ -248,14 +250,14 @@ class TS_RB_0033():
 
         if self.fSellPrice1 != 0.0:
             if (self.nPosition >= 0) and (df.iloc[-1]['MP'] >= 0):
-                if (self.npPriceInfo['현재가'] > self.fSellPrice1) and (PriceInfo['현재가'] <= self.fSellPrice1):
+                if (self.npPriceInfo['현재가'] >= self.fSellPrice1) and (PriceInfo['현재가'] <= self.fSellPrice1):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = -1
                     self.fSellPrice1 = 0.0
                     self.logger.info('Sell %s amount ordered', self.amt_entry)
         if self.fSellPrice2 != 0.0:
             if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
-                if (self.npPriceInfo['현재가'] > self.fSellPrice2) and (PriceInfo['현재가'] <= self.fSellPrice2):
+                if (self.npPriceInfo['현재가'] >= self.fSellPrice2) and (PriceInfo['현재가'] <= self.fSellPrice2):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.lstTrUnit[self.ix], PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] -= 1
                     self.fSellPrice2 = 0.0
@@ -264,14 +266,14 @@ class TS_RB_0033():
         # Exit
         if self.fEL != 0.0:
             if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0):
-                if self.npPriceInfo['현재가'] > self.fEL and PriceInfo['현재가'] <= self.fEL:
+                if self.npPriceInfo['현재가'] >= self.fEL and PriceInfo['현재가'] <= self.fEL:
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = 0
                     self.fEL = 0.0
                     self.logger.info('ExitLong %s amount ordered', self.amt_exit)
         if self.fES != 0.0:
             if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
-                if self.npPriceInfo['현재가'] < self.fES and PriceInfo['현재가'] >= self.fES:
+                if self.npPriceInfo['현재가'] <= self.fES and PriceInfo['현재가'] >= self.fES:
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = 0
                     self.fES = 0.0
