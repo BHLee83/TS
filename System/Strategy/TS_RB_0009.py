@@ -10,7 +10,6 @@ import logging
 
 class TS_RB_0009():
     def __init__(self, info) -> None:
-        super().__init__()
         self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
         self.logger.info('Init. start')
 
