@@ -57,9 +57,11 @@ class TS_RB_0023():
         self.applyChart()   # 전략 적용
 
 
-    def chkPos(self):
-        # Position check & amount setup
-        self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+    def chkPos(self, amt=0):
+        if amt == 0:
+            self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+        else:
+            self.nPosition += amt
         self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
         self.amt_exit = abs(self.nPosition)
 
@@ -90,6 +92,7 @@ class TS_RB_0023():
     def execute(self, PriceInfo):
         if type(PriceInfo) == int:  # 최초 실행시
             self.common()
+            self.chkPos()
             self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             return
 
@@ -103,7 +106,6 @@ class TS_RB_0023():
                 self.npPriceInfo['저가'] = df.iloc[-2]['저가']
                 self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
 
-        self.chkPos()
 
         # Entry
         if (df.iloc[-1]['MP'] != 1) and (self.nPosition <= 0):
@@ -111,10 +113,12 @@ class TS_RB_0023():
                 Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 상품코드, 매수/매도, 계약수, 가격
                 df.loc[len(df)-1, 'MP'] = 1
                 self.logger.info('Buy %s amount ordered', self.amt_entry)
+                self.chkPos(self.amt_entry)
         if (df.iloc[-1]['MP'] != -1) and (self.nPosition >= 0):
             if (self.npPriceInfo['현재가'] >= df.iloc[-2]['DispBottom']) and (PriceInfo['현재가'] <= df.iloc[-2]['DispBottom']):
                 Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                 df.loc[len(df)-1, 'MP'] = -1
                 self.logger.info('Sell %s amount ordered', self.amt_entry)
+                self.chkPos(-self.amt_entry)
 
         self.npPriceInfo = PriceInfo.copy()

@@ -72,8 +72,11 @@ class TS_RB_0033():
 
 
     # Position check & amount setup
-    def chkPos(self):
-        self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+    def chkPos(self, amt=0):
+        if amt == 0:
+            self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+        else:
+            self.nPosition += amt
         self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
         self.amt_exit = abs(self.nPosition)
 
@@ -217,6 +220,7 @@ class TS_RB_0033():
     def execute(self, PriceInfo):
         if type(PriceInfo) == int:  # 최초 실행시
             self.common()
+            self.chkPos()
             self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             return
         
@@ -229,7 +233,6 @@ class TS_RB_0033():
             self.common()
             self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             
-        self.chkPos()
         df = self.lstData[self.ix]
 
         # Entry
@@ -240,6 +243,7 @@ class TS_RB_0033():
                     df.loc[len(df)-1, 'MP'] = 1
                     self.fBuyPrice1 = 0.0
                     self.logger.info('Buy %s amount ordered', self.amt_entry)
+                    self.chkPos(self.amt_entry)
         if self.fBuyPrice2 != 0.0:
             if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0):
                 if (self.npPriceInfo['현재가'] <= self.fBuyPrice2) and (PriceInfo['현재가'] >= self.fBuyPrice2):
@@ -247,6 +251,7 @@ class TS_RB_0033():
                     df.loc[len(df)-1, 'MP'] += 1
                     self.fBuyPrice2 = 0.0
                     self.logger.info('Buy %s amount ordered', self.lstTrUnit[self.ix])
+                    self.chkPos(self.lstTrUnit[self.ix])
 
         if self.fSellPrice1 != 0.0:
             if (self.nPosition >= 0) and (df.iloc[-1]['MP'] >= 0):
@@ -255,6 +260,7 @@ class TS_RB_0033():
                     df.loc[len(df)-1, 'MP'] = -1
                     self.fSellPrice1 = 0.0
                     self.logger.info('Sell %s amount ordered', self.amt_entry)
+                    self.chkPos(-self.amt_entry)
         if self.fSellPrice2 != 0.0:
             if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
                 if (self.npPriceInfo['현재가'] >= self.fSellPrice2) and (PriceInfo['현재가'] <= self.fSellPrice2):
@@ -262,6 +268,7 @@ class TS_RB_0033():
                     df.loc[len(df)-1, 'MP'] -= 1
                     self.fSellPrice2 = 0.0
                     self.logger.info('Sell %s amount ordered', self.lstTrUnit[self.ix])
+                    self.chkPos(-self.lstTrUnit[self.ix])
 
         # Exit
         if self.fEL != 0.0:
@@ -271,6 +278,7 @@ class TS_RB_0033():
                     df.loc[len(df)-1, 'MP'] = 0
                     self.fEL = 0.0
                     self.logger.info('ExitLong %s amount ordered', self.amt_exit)
+                    self.chkPos(-self.amt_exit)
         if self.fES != 0.0:
             if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
                 if self.npPriceInfo['현재가'] <= self.fES and PriceInfo['현재가'] >= self.fES:
@@ -278,5 +286,6 @@ class TS_RB_0033():
                     df.loc[len(df)-1, 'MP'] = 0
                     self.fES = 0.0
                     self.logger.info('ExitShort %s amount ordered', self.amt_exit)
+                    self.chkPos(self.amt_exit)
 
         self.npPriceInfo = PriceInfo.copy()

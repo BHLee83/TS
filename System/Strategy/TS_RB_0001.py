@@ -75,8 +75,11 @@ class TS_RB_0001():
 
 
     # Position check & amount setup
-    def chkPos(self):
-        self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+    def chkPos(self, amt=0):
+        if amt == 0:
+            self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+        else:
+            self.nPosition += amt
         self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
         self.amt_exit = abs(self.nPosition)
 

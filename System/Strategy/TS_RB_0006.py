@@ -51,8 +51,11 @@ class TS_RB_0006():
 
 
     # Position check & amount setup
-    def chkPos(self):
-        self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+    def chkPos(self, amt=0):
+        if amt == 0:
+            self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+        else:
+            self.nPosition += amt
         self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
         self.amt_exit = abs(self.nPosition)
         
@@ -97,7 +100,9 @@ class TS_RB_0006():
     # 전략
     def execute(self, PriceInfo):
         if type(PriceInfo) == int:  # 최초 실행시
-            return self.common()
+            self.common()
+            self.chkPos()
+            return
             
         df = self.lstData[self.ix]
         if self.npPriceInfo == None:    # 첫 데이터 수신시
@@ -109,18 +114,18 @@ class TS_RB_0006():
                 self.npPriceInfo['저가'] = df.iloc[-2]['저가']
                 self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
 
-        self.chkPos()
-
         # Entry
         if df.iloc[-1]['MP'] != 1:
             if (self.npPriceInfo['현재가'] <= df.iloc[-1]['chUpper']) and (PriceInfo['현재가'] >= df.iloc[-1]['chUpper']): # 채널 상단 터치시
                 Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
                 df.loc[len(df)-1, 'MP'] = 1
                 self.logger.info('Buy %s amount ordered', self.amt_entry)
+                self.chkPos(self.amt_entry)
         if df.iloc[-1]['MP'] != -1:
             if (self.npPriceInfo['현재가'] >= df.iloc[-1]['chLower']) and (PriceInfo['현재가'] <= df.iloc[-1]['chLower']): # 채널 하단 터치시
                 Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
                 df.loc[len(df)-1, 'MP'] = -1
                 self.logger.info('Sell %s amount ordered', self.amt_entry)
+                self.chkPos(-self.amt_entry)
                 
         self.npPriceInfo = PriceInfo.copy()
