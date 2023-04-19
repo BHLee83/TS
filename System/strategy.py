@@ -220,7 +220,7 @@ class Strategy(metaclass=SingletonMeta):
                 Strategy.addToNettingOrder(v)
             else:
                 for j in Strategy.lstOrderInfo_Net:
-                    if all([j['PRODUCT_CODE'] == v['PRODUCT_CODE'], j['ORDER_TYPE'] == v['ORDER_TYPE']]):
+                    if all([j['PRODUCT_CODE'] == v['PRODUCT_CODE'], j['ORDER_TYPE'] == v['ORDER_TYPE'], j['ORDER_PRICE'] == v['ORDER_PRICE']]):
                         j['QUANTITY'] += v['QUANTITY']
                         j['NET_ID'] += ',' + v['ID']   # 네팅된 주문의 ID 목록
                         break
@@ -233,8 +233,8 @@ class Strategy(metaclass=SingletonMeta):
         dictOrderInfo['OCCUR_TIME'] = dt.datetime.now().time()
         dictOrderInfo['PRODUCT_CODE'] = v['PRODUCT_CODE']
         dictOrderInfo['QUANTITY'] = v['QUANTITY']
-        dictOrderInfo['ORDER_TYPE'] = v['ORDER_TYPE']   # 일단 주문타입(지정가/시장가) 구분만 고려 (시장가 문제없음)
-        # TODO: 가격을 고려하지 않아 지정가는 executeOrder에서 정의된 호가로만 주문 발생. 미리 내놓는 주문의 가격 등은 고려되지 않는 문제 있음
+        dictOrderInfo['ORDER_TYPE'] = v['ORDER_TYPE']
+        dictOrderInfo['ORDER_PRICE'] = v['ORDER_PRICE']
         dictOrderInfo['NET_ID'] = v['ID']
         Strategy.lstOrderInfo_Net.append(dictOrderInfo)
 
