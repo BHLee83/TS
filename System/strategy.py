@@ -188,7 +188,7 @@ class Strategy(metaclass=SingletonMeta):
                     direction = '01'
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], 'M')
                 # ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction, 'M')
-                ret = interface.objOrder.order(acntCode, acntPwd, i, direction, 'M')
+                ret = interface.objOrder.order(acntCode, acntPwd, i, direction, '0', 'M')
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
@@ -199,6 +199,8 @@ class Strategy(metaclass=SingletonMeta):
                 elif i['QUANTITY'] < 0:
                     i['PRICE'] = PriceInfo['매수1호가']
                     direction = '01'
+                if i['PRICE'] == 0: # 시초가 등 호가가 제대로 없는 경우 현재가로 처리
+                    i['PRICE'] = PriceInfo['현재가']
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], i['PRICE'])
                 # ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction)
                 ret = interface.objOrder.order(acntCode, acntPwd, i, direction)
