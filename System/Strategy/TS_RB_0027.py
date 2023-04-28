@@ -171,7 +171,9 @@ class TS_RB_0027():
     # 전략 실행
     def execute(self, PriceInfo):
         if type(PriceInfo) == int:  # 최초 실행시
-            return self.common()
+            self.common()
+            self.chkPos()
+            return
         
         if self.npPriceInfo == None:    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
@@ -181,7 +183,6 @@ class TS_RB_0027():
         (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
             self.common()
         
-        self.chkPos()
         df = self.lstData[self.ix]
 
         # Entry
