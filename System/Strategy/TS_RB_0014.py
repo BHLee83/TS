@@ -27,7 +27,7 @@ class TS_RB_0014():
         self.lstAssetType = self.dfInfo['ASSET_TYPE'].split(',')
         self.lstUnderId = self.dfInfo['UNDERLYING_ID'].split(',')
         self.lstTimeFrame = self.dfInfo['TIMEFRAME'].split(',')
-        self.boolON = bool(int(self.dfInfo['OVERNIGHT']))
+        self.isON = bool(int(self.dfInfo['OVERNIGHT']))
         self.lstTrUnit = list(map(int, self.dfInfo['TR_UNIT'].split(',')))
         self.fWeight = self.dfInfo['WEIGHT']
 
@@ -179,7 +179,7 @@ class TS_RB_0014():
 
 
     def lastProc(self):
-        if self.boolON == False:    # 당일 종가 청산
+        if self.isON == False:    # 당일 종가 청산
             df = self.lstData[self.ix]
             if df['MP'][0] == 1:
                 Strategy.setOrder(self.dfInfo['NAME'], self.lstProductCode[self.ix], 'S', self.amt_exit, 0)

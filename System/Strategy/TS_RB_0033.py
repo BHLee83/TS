@@ -182,11 +182,17 @@ class TS_RB_0033():
                     self.fBuyPrice1 = df['고가'][i] + 1
                 else:
                     self.fBuyPrice2 = df['TRIA1'][i] + 1
+            else:
+                self.fBuyPrice1 = 0.0
+                self.fBuyPrice2 = 0.0
             if (self.bSSetup and df['MP'][i] > -1) or (self.bSFlag and abs(df['MP'][i]) < 3):
                 if df['MP'][i] > -1:
                     self.fSellPrice1 = df['저가'][i] - 1
                 else:
                     self.fSellPrice2 = df['TRIA1'][i] - 1
+            else:
+                self.fSellPrice1 = 0.0
+                self.fSellPrice2 = 0.0
 
             # Exit
             if df['MP'][i-1] > 0:    # execution

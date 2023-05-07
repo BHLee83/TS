@@ -142,23 +142,25 @@ class TS_RB_0011():
             
             # Exit
             if self.fSL != 0.0: # Stop loss
-                if df['MP'][i-1] == 1:  # Exit long
+                if (df['MP'][i-1] == 1) and (df['MP'][i] == 1):  # Exit long
                     if df['저가'][i-1] <= self.fSL:
                         df.loc[i, 'MP'] = 0
                         self.fSL = 0.0
-                if df['MP'][i-1] == -1: # Exit short
+                if (df['MP'][i-1] == -1) and (df['MP'][i] == -1): # Exit short
                     if df['고가'][i] >= self.fSL:
                         df.loc[i, 'MP'] = 0
                         self.fSL = 0.0
 
             if self.fEL != 0.0: # Trail stop (execution)
-                if df['MP'][i-1] == 1 and df['저가'][i] <= self.fEL:
-                    df.loc[i, 'MP'] = 0
-                    self.fEL = 0.0
+                if (df['MP'][i-1] == 1) and (df['MP'][i] == 1):
+                    if df['저가'][i] <= self.fEL:
+                        df.loc[i, 'MP'] = 0
+                        self.fEL = 0.0
             if self.fES != 0.0:
-                if df['MP'][i-1] == -1 and df['고가'][i] >= self.fES:
-                    df.loc[i, 'MP'] = 0
-                    self.fES = 0.0
+                if (df['MP'][i-1] == -1) and (df['MP'][i] == -1):
+                    if df['고가'][i] >= self.fES:
+                        df.loc[i, 'MP'] = 0
+                        self.fES = 0.0
 
             if i >= self.nSwingP - 1:   # Trail stop (setup)
                 if df['고가'][i] > max(df['고가'][i-self.nSwingP+1:i].values):  # 신고가

@@ -94,21 +94,23 @@ class TS_RB_0004():
                     self.fStopLoss = max(df['고가'][i-1:i+1].values)   # SL(ES) price
 
             # Exit
-            if df['MP'][i-1] == 1:    # Stop loss
+            if (df['MP'][i-1] == 1) and (df['MP'][i] == 1):    # Stop loss
                 if df['저가'][i] <= self.fStopLoss:    # Exit long
                     df.loc[i, 'MP'] = 0
                     self.fStopLoss = 0.0
-            if df['MP'][i-1] == -1:
+            if (df['MP'][i-1] == -1) and (df['MP'][i] == -1):
                 if df['고가'][i] >= self.fStopLoss:    # Exit short
                     df.loc[i, 'MP'] = 0
                     self.fStopLoss = 0.0
             
-            if df['MP'][i-1] == 1 and df['저가'][i] <= self.fTS_EL:   # # Trail stop (execution)
-                df.loc[i, 'MP'] = 0
-                self.fTS_EL = 0.0
-            if df['MP'][i-1] == -1 and df['고가'][i] >= self.fTS_ES:
-                df.loc[i, 'MP'] = 0
-                self.fTS_ES = 0.0
+            if (df['MP'][i-1] == 1) and (df['MP'][i] == 1):
+                if df['저가'][i] <= self.fTS_EL:   # # Trail stop (execution)
+                    df.loc[i, 'MP'] = 0
+                    self.fTS_EL = 0.0
+            if (df['MP'][i-1] == -1) and (df['MP'][i] == -1):
+                if df['고가'][i] >= self.fTS_ES:
+                    df.loc[i, 'MP'] = 0
+                    self.fTS_ES = 0.0
 
             if i >= self.nSwingP - 1:   # # Trail stop (setup)
                 if df['고가'][i] > max(df['고가'][i-self.nSwingP+1:i].values):  # 신고가
