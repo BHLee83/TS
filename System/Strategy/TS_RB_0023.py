@@ -109,13 +109,13 @@ class TS_RB_0023():
 
         # Entry
         if (df.iloc[-1]['MP'] != 1) and (self.nPosition <= 0):
-            if (self.npPriceInfo['현재가'] <= df.iloc[-1]['DispTop']) and (PriceInfo['현재가'] >= df.iloc[-1]['DispTop']):
+            if (self.npPriceInfo['현재가'] <= df.iloc[-2]['DispTop']) and (PriceInfo['현재가'] >= df.iloc[-2]['DispTop']):
                 Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 상품코드, 매수/매도, 계약수, 가격
                 df.loc[len(df)-1, 'MP'] = 1
                 self.logger.info('Buy %s amount ordered', self.amt_entry)
                 self.chkPos(self.amt_entry)
         if (df.iloc[-1]['MP'] != -1) and (self.nPosition >= 0):
-            if (self.npPriceInfo['현재가'] >= df.iloc[-1]['DispBottom']) and (PriceInfo['현재가'] <= df.iloc[-1]['DispBottom']):
+            if (self.npPriceInfo['현재가'] >= df.iloc[-2]['DispBottom']) and (PriceInfo['현재가'] <= df.iloc[-2]['DispBottom']):
                 Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                 df.loc[len(df)-1, 'MP'] = -1
                 self.logger.info('Sell %s amount ordered', self.amt_entry)
