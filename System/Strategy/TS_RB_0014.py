@@ -14,7 +14,6 @@ import logging
 
 class TS_RB_0014():
     def __init__(self, info) -> None:
-        super().__init__()
         self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
         self.logger.info('Init. start')
 
@@ -79,17 +78,12 @@ class TS_RB_0014():
         df = self.lstData[self.ix]
         df['Range'] = (df['고가']-df['저가']).shift().rolling(window=30).mean()
         df['MP'] = 0
-        df['EntryLv'] = 0.0
-        df['ExitLv'] = 0.0
         dfSignal = pd.DataFrame(None, columns=df.columns)
         for i in df.index-1:
             if i < 1:
                 continue
 
             df.loc[i, 'MP'] = df['MP'][i-1]
-            df.loc[i, 'EntryLv'] = df['EntryLv'][i-1]
-            df.loc[i, 'ExitLv'] = df['ExitLv'][i-1]
-
             if df['일자'][i] != df['일자'][i-1]:
                 self.fDayOpen = df['시가'][i]
 
