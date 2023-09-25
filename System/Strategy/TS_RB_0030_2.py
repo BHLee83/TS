@@ -99,7 +99,7 @@ class TS_RB_0030_2():
             
             # Setup
             t = int(df['시간'][i])
-            if t <= 103500:
+            if t <= 103000:
                 if df['일자'][i] != df['일자'][i-1]:
                     self.fSetHigh = df['고가'][i]
                     self.fSetLow = df['저가'][i]
@@ -147,7 +147,7 @@ class TS_RB_0030_2():
         t = int(PriceInfo['체결시간'].decode())
 
         # Entry
-        if t < 150000:
+        if (t > 103000) and (t < 150000):
             if (self.nPosition <= 0) and (df.iloc[-1]['MP'] <= 0):
                 if self.bBflag and (self.npPriceInfo['현재가'] <= self.fSetHigh) and (PriceInfo['현재가'] >= self.fSetHigh):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 상품코드, 매수/매도, 계약수, 가격
