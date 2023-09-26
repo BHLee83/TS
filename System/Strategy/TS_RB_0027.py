@@ -118,6 +118,7 @@ class TS_RB_0027():
                     else:
                         df.loc[i, 'EntryLv'] = self.fBuyPrice
                     self.fBuyPrice = 0.0
+                    self.fSellPrice = 0.0
             if self.fSellPrice != 0.0:
                 if df['MP'][i] != -1 and df['저가'][i] <= self.fSellPrice:
                     df.loc[i, 'MP'] = -1
@@ -126,6 +127,7 @@ class TS_RB_0027():
                         df.loc[i, 'EntryLv'] = df['시가'][i]
                     else:
                         df.loc[i, 'EntryLv'] = self.fSellPrice
+                    self.fBuyPrice = 0.0
                     self.fSellPrice = 0.0
 
             if (df['AvgCCI'][i] > -100) and (df['BuySetup'][i-self.nEntryBar+1:i+1].sum() > 0):    # setup
@@ -192,6 +194,7 @@ class TS_RB_0027():
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = 1
                     self.fBuyPrice = 0.0
+                    self.fSellPrice = 0.0
                     self.logger.info('Buy %s amount ordered', self.amt_entry)
                     self.chkPos(self.amt_entry)
         if self.fSellPrice != 0.0:
@@ -199,6 +202,7 @@ class TS_RB_0027():
                 if self.npPriceInfo['현재가'] >= self.fSellPrice and PriceInfo['현재가'] <= self.fSellPrice:
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                     df.loc[len(df)-1, 'MP'] = -1
+                    self.fBuyPrice = 0.0
                     self.fSellPrice = 0.0
                     self.logger.info('Sell %s amount ordered', self.amt_entry)
                     self.chkPos(-self.amt_entry)

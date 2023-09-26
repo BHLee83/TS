@@ -82,7 +82,7 @@ class TS_RB_0030_1():
         df['MP'] = 0
         dfSignal = pd.DataFrame(None, columns=df.columns)
         for i in df.index-1:
-            if i < 1:
+            if i < 2:
                 continue
 
             df.loc[i, 'MP'] = df['MP'][i-1]
