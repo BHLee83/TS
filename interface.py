@@ -74,7 +74,7 @@ class Interface():
 
             self.userEnv.setAccount()
             self.price.rqProductMstInfo(self.strTR_MST) # 상품선물 전종목 정보 (-> setNearMonth)
-            self.event_loop.exec_()
+            # self.event_loop.exec_()
             
             Strategy.__init__()
             self.initDate()
@@ -88,7 +88,7 @@ class Interface():
             self.wndIndi.pbRunStrategy.clicked.connect(self.pbRunStrategy)   # 전략 실행 버튼 클릭
 
         # Scheduling
-        self.qtTarget = QTime(15, 44, 0)
+        self.qtTarget = QTime(15, 40, 0)
         self.timer = QTimer()
         self.timer.timeout.connect(self.lastProc)
         self.timer.start(1000)
@@ -123,7 +123,7 @@ class Interface():
             if len(Strategy.dfStrategyInfo) != 0:
                 for i in Strategy.dfStrategyInfo.index:
                     self.lstChkBox.append(QCheckBox())
-                    self.lstChkBox[i].setCheckState(int(Strategy.dfStrategyInfo['use'][i] * 2)) # 2: Checked, 0: Not checked
+                    self.lstChkBox[i].setCheckState(int(Strategy.dfStrategyInfo['USE'][i] * 2)) # 2: Checked, 0: Not checked
                     self.lstChkBox[i].toggled.connect(self.chkbox_toggled)
                 self.setTwStrategyInfoUI()  # 전략 세팅값 확인(UI)
                 self.initPosition()
@@ -172,10 +172,10 @@ class Interface():
             assetCode = str(tuple(set(lstAssetCode)))
             assetCode = assetCode.split(',)')[0].split(')')[0] + ')'
             # 당일자 포지션 있는지 조회
-            strQuery = f"SELECT position.*, pos_direction*pos_amount AS position FROM position WHERE base_date = '{self.dtToday}' AND asset_code IN {assetCode}"
+            strQuery = f"SELECT position.*, pos_direction*pos_amount AS position FROM position WHERE base_date = TO_DATE('{self.dtToday}', 'YYYY-MM-DD') AND asset_code IN {assetCode}"
             self.dfPositionT_1 = self.instDB.query_to_df(strQuery, 100)
             if self.dfPositionT_1.empty:    # 없으면 전일자 조회
-                strQuery = f"SELECT position.*, pos_direction*pos_amount AS position FROM position WHERE base_date = '{self.dtT_1}' AND asset_code IN {assetCode}"
+                strQuery = f"SELECT position.*, pos_direction*pos_amount AS position FROM position WHERE base_date = TO_DATE('{self.dtT_1}', 'YYYY-MM-DD') AND asset_code IN {assetCode}"
                 self.dfPositionT_1 = self.instDB.query_to_df(strQuery, 100)
             # # 당일 거래내역 조회
             # lstStrategyID = Strategy.dfStrategyInfo['NAME']
@@ -225,9 +225,6 @@ class Interface():
         end = time.process_time()
         logging.info('Time elapsed(1st run): %s', timedelta(seconds=end-start))
 
-        self.orderStrategy()    # 접수된 주문 실행
-        # self.event_loop.exec_()
-
 
     # 2. 실시간 시세 수신
     def pbRqPrice(self):
@@ -254,12 +251,9 @@ class Interface():
         now = QTime.currentTime()
         if now >= self.qtTarget:
             for i in self.lstObj_Strategy:
-                try:
-                    if i.isON == False:
-                        i.lastProc()
-                except:
-                    pass
-
+                if i.isON == False:
+                    i.lastProc()
+            
             self.orderStrategy()    # 접수된 주문 실행
             self.timer.stop()
 
@@ -421,7 +415,7 @@ class Interface():
                     if np.array_equal(order, pos):  # 전략명, 자산코드, 만기, 계좌 일치
                         qty = Strategy.dfPosition['POSITION'][i] + ordInfo['QUANTITY']
                         if qty == 0:    # 수량이 0 되면 목록에서 제외
-                            Strategy.dfPosition = Strategy.dfPosition.drop(i, axis=0)
+                            Strategy.dfPosition = Strategy.dfPosition.drop(i, axis=0).reset_index().drop('index', axis=1)
                         else:
                             Strategy.dfPosition.loc[i, 'POS_DIRECTION'] = int(qty / abs(qty))
                             Strategy.dfPosition.loc[i, 'POS_AMOUNT'] = abs(qty)
@@ -451,6 +445,7 @@ class Interface():
         Strategy.dfPosition.loc[l, 'POS_PRICE'] = ordInfo['SETTLE_PRICE']
         Strategy.dfPosition.loc[l, 'FUND_CODE'] = self.strAcntCode
         Strategy.dfPosition.loc[l, 'POSITION'] = q
+        Strategy.dfPosition = Strategy.dfPosition.sort_values(by='STRATEGY_ID')
 
 
     # 전략별 거래내역 DB에 기록
