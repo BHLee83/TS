@@ -40,6 +40,9 @@ class Interface():
         self.strToday = self.dtToday.strftime('%Y%m%d')
         self.dtT_1 = None
         self.strT_1 = ''
+        self.MARKETOPEN_HOUR = 9
+        self.MARKETCLOSE_HOUR = 15
+        self.MARKETCLOSE_MIN = 45
 
         # Local settings
         self.strTR_MST = 'cfut_mst'
@@ -88,7 +91,7 @@ class Interface():
             self.wndIndi.pbRunStrategy.clicked.connect(self.pbRunStrategy)   # 전략 실행 버튼 클릭
 
         # Scheduling
-        self.qtTarget = QTime(15, 40, 0)
+        self.qtTarget = QTime(self.MARKETCLOSE_HOUR, self.MARKETCLOSE_MIN-2, 0)
         self.timer = QTimer()
         self.timer.timeout.connect(self.lastProc)
         self.timer.start(1000)
@@ -104,6 +107,9 @@ class Interface():
         self.strT_1 = self.dtT_1.strftime('%Y%m%d')
         Strategy.strToday = self.strToday
         Strategy.strT_1 = self.strT_1
+        Strategy.MARKETOPEN_HOUR = self.MARKETOPEN_HOUR
+        Strategy.MARKETCLOSE_HOUR = self.MARKETCLOSE_HOUR
+        Strategy.MARKETCLOSE_MIN = self.MARKETCLOSE_MIN
 
 
     def initAcntInfo(self):

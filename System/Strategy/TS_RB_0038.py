@@ -217,7 +217,7 @@ class TS_RB_0038():
 
             df = self.lstData[self.ix]
             tNow = dt.now().time()
-            if tNow.hour < 9:   # 9시 전이면
+            if tNow.hour < Strategy.MARKETOPEN_HOUR:   # 장 시작 전이면
                 # Exit
                 if df.iloc[-1]['MP'] == 1 and df.iloc[-2]['LongCounter'] <= 2:  # Method 1
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, 0)   # 동호 매수 청산

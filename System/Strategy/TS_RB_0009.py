@@ -103,7 +103,7 @@ class TS_RB_0009():
     def execute(self, PriceInfo):
         if type(PriceInfo) == int:  # 최초 실행시
             tNow = dt.now().time()
-            if tNow.hour < 9:   # 9시 전이면
+            if tNow.hour < Strategy.MARKETOPEN_HOUR:   # 장 시작 전이면
                 self.common()
                 self.chkPos()
                 

@@ -32,6 +32,9 @@ class Strategy(metaclass=SingletonMeta):
 
     strToday = ''
     strT_1 = ''
+    MARKETOPEN_HOUR = 0
+    MARKETCLOSE_HOUR = 0
+    MARKETCLOSE_MIN = 0
     instDB = oracleDB('oraDB1')    # DB 연결
 
     dfCFutMst = pd.DataFrame(None)
@@ -179,7 +182,7 @@ class Strategy(metaclass=SingletonMeta):
         for i in Strategy.lstOrderInfo_Net:
             if i['QUANTITY'] == 0:  # 네팅 수량이 0이면 주문 패스
                 logging.info('네팅 수량 0으로 실주문 없음')
-            elif PriceInfo == None:
+            elif (PriceInfo == None) or all([PriceInfo['시가'] == 0, PriceInfo['고가'] == 0, PriceInfo['저가'] == 0]):
                 if i['QUANTITY'] > 0:
                     i['PRICE'] = 0
                     direction = '02'
@@ -218,16 +221,16 @@ class Strategy(metaclass=SingletonMeta):
         Strategy.lstOrderInfo_Net = []
         for i, v in enumerate(Strategy.lstOrderInfo):
             v['ID'] = str(i)    # 기존 주문 넘버링
-            if Strategy.lstOrderInfo_Net == []:
+            if Strategy.lstOrderInfo_Net == []: # 처음은 신규로 추가
                 Strategy.addToNettingOrder(v)
             else:
-                for j in Strategy.lstOrderInfo_Net:
-                    if all([j['PRODUCT_CODE'] == v['PRODUCT_CODE'], j['ORDER_TYPE'] == v['ORDER_TYPE'], j['ORDER_PRICE'] == v['ORDER_PRICE']]):
-                        j['QUANTITY'] += v['QUANTITY']
-                        j['NET_ID'] += ',' + v['ID']   # 네팅된 주문의 ID 목록
+                for j, w in enumerate(Strategy.lstOrderInfo_Net):
+                    if all([w['PRODUCT_CODE'] == v['PRODUCT_CODE'], w['ORDER_TYPE'] == v['ORDER_TYPE'], w['ORDER_PRICE'] == v['ORDER_PRICE']]):
+                        w['QUANTITY'] += v['QUANTITY']
+                        w['NET_ID'] += ',' + v['ID']   # 네팅된 주문의 ID 목록
                         break
-                if j == Strategy.lstOrderInfo_Net[-1]:
-                    Strategy.addToNettingOrder(v)
+                    if j == len(Strategy.lstOrderInfo_Net) - 1: # 네팅 안되면 신규로 추가
+                        Strategy.addToNettingOrder(v)
 
 
     def addToNettingOrder(v):
@@ -309,7 +312,13 @@ class Strategy(metaclass=SingletonMeta):
                 df.loc[len(df)] = df.iloc[-1]
                 df.loc[len(df)-1, '일자'] = Strategy.strToday
             if df.iloc[-1]['시간'] != '000000':
-                df.loc[len(df)-1, '시간'] = df.iloc[df[df['시간']==df.iloc[-1]['시간']].index[0]+1]['시간']
+                if df.iloc[-1]['시간'] == '154500': # TODO: 임시
+                    df.loc[len(df)-1, '시간'] = format(Strategy.MARKETOPEN_HOUR, '02') + timeframe.rjust(2, '0') + '00'
+                    df.loc[len(df)-1, '시가'] = 0
+                    df.loc[len(df)-1, '고가'] = 0
+                    df.loc[len(df)-1, '저가'] = 0
+                # else:
+                #     df.loc[len(df)-1, '시간'] = df.iloc[df[df['시간']==df.iloc[-1]['시간']].index[0]+1]['시간']
             Strategy.setHistData(productCode, timeframe, df)
             return df.iloc[-period-1:].reset_index().drop('index', axis=1)
         else:   # DB에도 없으면
@@ -356,11 +365,13 @@ class Strategy(metaclass=SingletonMeta):
                         i['VALUES'].loc[len(i['VALUES'])-1] = Strategy.getPrice(PriceInfo) # 업데이트
                     i['VALUES'].loc[len(i['VALUES'])-1, '시간'] = '000000'
                 else:   # 분봉인 경우 (주봉/월봉 일단 제외)
-                    if PriceInfo['체결시간'].decode() == '154500':
+                    if (PriceInfo['체결시간'].decode() == '000000') or (PriceInfo['체결시간'].decode() == '154500'):
                         continue
 
                     tf = int(i['TIMEFRAME'])
                     h = int(PriceInfo['체결시간'][0:2])
+                    if h == 0:
+                        h = Strategy.MARKETOPEN_HOUR
                     m = int(PriceInfo['체결시간'][2:4])
                     m = int(m / tf) * tf + tf
                     if m >= 60:
@@ -380,9 +391,11 @@ class Strategy(metaclass=SingletonMeta):
                             i['VALUES'].loc[l, '저가'] = PriceInfo['현재가']
                         else:   # 있으면 업데이트
                             l = len(i['VALUES']) - 1
-                            if i['VALUES'].loc[l, '고가'] < PriceInfo['현재가']:
+                            if i['VALUES'].loc[l, '시가'] == 0:
+                                i['VALUES'].loc[l, '시가'] = PriceInfo['현재가'] 
+                            if (i['VALUES'].loc[l, '고가'] == 0) or (i['VALUES'].loc[l, '고가'] < PriceInfo['현재가']):
                                 i['VALUES'].loc[l, '고가'] = PriceInfo['현재가']
-                            if i['VALUES'].loc[l, '저가'] > PriceInfo['현재가']:
+                            if (i['VALUES'].loc[l, '저가'] == 0) or (i['VALUES'].loc[l, '저가'] > PriceInfo['현재가']):
                                 i['VALUES'].loc[l, '저가'] = PriceInfo['현재가']
                             i['VALUES'].loc[l, '종가'] = PriceInfo['현재가']
 
