@@ -8,6 +8,7 @@
 # 수수료: 0.0006%
 # 슬리피지: 0.05pt
 
+
 from System.strategy import Strategy
 
 import pandas as pd
@@ -53,6 +54,7 @@ class TS_RB_0045_1():
         self.fR2 = 6
         self.nATRlen = 60
         self.nEntryLimit = 153000
+        self.dtEntryLimit = dt.time(15,30)
 
         self.fDayOpen = 0.0
         self.fDayOpen_t1 = 0.0
@@ -226,7 +228,7 @@ class TS_RB_0045_1():
                     self.chkPos(self.amt_exit)
 
         # Entry
-        if dt.datetime.now().time() < dt.time(15, 30):
+        if dt.datetime.now().time() < self.dtEntryLimit:
             if self.fBuyPrice != 0.0:
                 if (self.nPosition <= 0) and (df.iloc[-1]['MP'] <= 0):
                     if (self.npPriceInfo['현재가'] <= self.fBuyPrice) and (PriceInfo['현재가'] >= self.fBuyPrice):

@@ -64,6 +64,7 @@ class TS_RB_0043_3():
         self.fExitPrice = 0.0
         self.bCond1 = False
         self.bCond2 = False
+        self.dtEntryLimit = dt.time(15,30)
         
 
     # 공통 프로세스
@@ -207,7 +208,7 @@ class TS_RB_0043_3():
                     self.chkPos(self.amt_exit)
 
         # Entry
-        if dt.datetime.now().time() < dt.time(15, 0):
+        if dt.datetime.now().time() < self.dtEntryLimit:
             if self.fBuyPrice != 0.0:
                 if (self.nPosition <= 0) and (df.iloc[-1]['MP'] <= 0):
                     if (self.npPriceInfo['현재가'] <= self.fBuyPrice) and (PriceInfo['현재가'] >= self.fBuyPrice):
