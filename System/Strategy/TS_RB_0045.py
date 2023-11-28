@@ -16,7 +16,6 @@ import datetime as dt
 import logging
 
 
-
 class TS_RB_0045():
     def __init__(self, info) -> None:
         self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
@@ -59,6 +58,8 @@ class TS_RB_0045():
         self.fDayClose_t1 = 0.0
         self.fBuyPrice = 0.0
         self.fSellPrice = 0.0
+        self.fDemarkLine1 = 0.0
+        self.fDemarkLine2 = 0.0
         
 
     # 공통 프로세스
@@ -107,14 +108,22 @@ class TS_RB_0045():
                 self.fDayLow_t1 = df[df['일자'] == df['일자'][i-1]]['저가'].min()
                 self.fDayClose_t1 = df['종가'][i-1]
                 if self.fDayOpen > self.fDayClose_t1:
-                    demarkLine1 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayLow_t1
-                    demarkLine2 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayHigh_t1
+                    self.fDemarkLine1 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayLow_t1
+                    self.fDemarkLine2 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayHigh_t1
                 elif self.fDayOpen < self.fDayClose_t1:
-                    demarkLine1 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
-                    demarkLine2 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
+                    self.fDemarkLine1 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
+                    self.fDemarkLine2 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
                 else:
-                    demarkLine1 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
-                    demarkLine2 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
+                    self.fDemarkLine1 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
+                    self.fDemarkLine2 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
+                if self.fDayOpen > self.fDemarkLine1:
+                    self.fBuyPrice = self.fDayOpen + (self.fDemarkLine1 - self.fDemarkLine2) * self.fR
+                if self.fDayOpen < self.fDemarkLine2:
+                    self.fBuyPrice = self.fDemarkLine2
+                if self.fDayOpen > self.fDemarkLine1:
+                    self.fSellPrice = self.fDemarkLine1
+                if self.fDayOpen < self.fDemarkLine2:
+                    self.fSellPrice = self.fDayOpen - (self.fDemarkLine1 - self.fDemarkLine2) * self.fR
                 
             if self.fDayOpen == 0:
                 continue
@@ -126,20 +135,11 @@ class TS_RB_0045():
                         if self.fBuyPrice != 0.0 and df['고가'][i] >= self.fBuyPrice:    # execution
                             df.loc[i, 'MP'] = 1
                             df.loc[i, 'EntryLv'] = max(self.fBuyPrice, df['시가'][i])
-                            self.fBuyPrice = 0.0
-                        if self.fDayOpen > demarkLine1:
-                            self.fBuyPrice = self.fDayOpen + (demarkLine1 - demarkLine2) * self.fR
-                        if self.fDayOpen < demarkLine2:
-                            self.fBuyPrice = demarkLine2
                     if df['MP'][i] >= 0:
                         if self.fSellPrice != 0.0 and df['저가'][i] <= self.fSellPrice:
                             df.loc[i, 'MP'] = -1
                             df.loc[i, 'EntryLv'] = min(self.fSellPrice, df['시가'][i])
-                            self.fSellPrice = 0.0
-                        if self.fDayOpen > demarkLine1:
-                            self.fSellPrice = demarkLine1
-                        if self.fDayOpen < demarkLine2:
-                            self.fSellPrice = self.fDayOpen - (demarkLine1 - demarkLine2) * self.fR
+                        
 
             # Position check
         #     if df['MP'][i] != df['MP'][i-1]:
@@ -176,7 +176,6 @@ class TS_RB_0045():
                     if (self.npPriceInfo['현재가'] <= self.fBuyPrice) and (PriceInfo['현재가'] >= self.fBuyPrice):
                         Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])
                         df.loc[len(df)-1, 'MP'] = 1
-                        self.fBuyPrice = 0.0
                         self.logger.info('Buy %s amount ordered', self.amt_entry)
                         self.chkPos(self.amt_entry)
             if self.fSellPrice != 0.0:
@@ -184,7 +183,6 @@ class TS_RB_0045():
                     if (self.npPriceInfo['현재가'] >= self.fSellPrice) and (PriceInfo['현재가'] <= self.fSellPrice):
                         Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                         df.loc[len(df)-1, 'MP'] = -1
-                        self.fSellPrice = 0.0
                         self.logger.info('Sell %s amount ordered', self.amt_entry)
                         self.chkPos(-self.amt_entry)
 
