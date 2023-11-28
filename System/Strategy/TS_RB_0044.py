@@ -12,9 +12,7 @@ from System.strategy import Strategy
 
 import pandas as pd
 import datetime as dt
-import talib as ta
 import logging
-
 
 
 class TS_RB_0044():
@@ -49,9 +47,7 @@ class TS_RB_0044():
 
         # Local setting variables
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
-        self.fR1 = 0.3
-        self.fR2 = 6
-        self.nATRlen = 60
+        self.fR = 0.3
         self.nEntryLimit = 153000
         self.dtEntryLimit = dt.time(15,30)
         self.nDaysSinceEntry = 0
@@ -103,11 +99,9 @@ class TS_RB_0044():
         df['EntryLv'] = 0.0
         df['ExitLv'] = 0.0
 
-        df['ATR'] = ta.ATR(df['고가'], df['저가'], df['종가'], self.nATRlen)
-
         # dfSignal = pd.DataFrame(None, columns=df.columns)
         for i in df.index-1:
-            if i < self.nATRlen:
+            if i < 80:
                 continue
 
             df.loc[i, 'MP'] = df['MP'][i-1]
@@ -126,6 +120,8 @@ class TS_RB_0044():
                 dayHigh_t1 = df[(df['일자'] >= df['일자'][i-1]) & (df['일자'] < df['일자'][i])]['고가'].max()
                 dayLow_t1 = df[(df['일자'] >= df['일자'][i-1]) & (df['일자'] < df['일자'][i])]['저가'].min()
                 self.fDayRange_t1 = dayHigh_t1 - dayLow_t1
+                self.fBuyPrice = self.fDayOpen + self.fDayRange_t1 * self.fR
+                self.fSellPrice = self.fDayOpen - self.fDayRange_t1 * self.fR
                 # Profitable Open Stop
                 if df['MP'][i] != 0:
                     self.nDaysSinceEntry = self.nDaysSinceEntry + 1
@@ -133,13 +129,17 @@ class TS_RB_0044():
                         if (df['MP'][i] > 0) and (df['EntryLv'][i] < self.fDayOpen):
                             df.loc[i, 'ExitLv'] = df['시가'][i]
                             df.loc[i, 'MP'] = 0
-                            self.strExitName = 'EL_OS'
+                            self.strEntryDate = df['일자'][self.nEntryIdx]
                             self.strExitDate = df['일자'][i]
+                            self.strExitName = 'EL_OS'
+                            self.fEL_TS = 0.0
                         if (df['MP'][i] < 0) and (df['EntryLv'][i] > self.fDayOpen):
                             df.loc[i, 'ExitLv'] = df['시가'][i]
                             df.loc[i, 'MP'] = 0
-                            self.strExitName = 'ES_OS'
+                            self.strEntryDate = df['일자'][self.nEntryIdx]
                             self.strExitDate = df['일자'][i]
+                            self.strExitName = 'ES_OS'
+                            self.fES_TS = 0.0
                 
             if self.fDayOpen == 0:
                 continue
@@ -151,69 +151,53 @@ class TS_RB_0044():
             if self.fDayLow > df['저가'][i]:
                 self.fDayLow = df['저가'][i]
                 
-            if (self.strExitName == 'EL_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate == df['일자'][i]) and (df['ExitLv'][i] > (self.fDayOpen + self.fDayRange_t1 * self.fR1)):
+            if (self.strExitName == 'EL_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate == df['일자'][i]) and (df['ExitLv'][i] > (self.fDayOpen + self.fDayRange_t1 * self.fR)):
                 self.bCond1 = True
-            if (self.strExitName == 'ES_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate == df['일자'][i]) and (df['ExitLv'][i] < (self.fDayOpen - self.fDayRange_t1 * self.fR1)):
+            if (self.strExitName == 'ES_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate == df['일자'][i]) and (df['ExitLv'][i] < (self.fDayOpen - self.fDayRange_t1 * self.fR)):
                 self.bCond2 = True
-            if (self.strExitName == 'EL_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate != df['일자'][i]) and (df['ExitLv'][i] > (self.fDayOpen + self.fDayRange_t1 * self.fR1)):
+            if (self.strExitName == 'EL_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate != df['일자'][i]) and (df['ExitLv'][i] > (self.fDayOpen + self.fDayRange_t1 * self.fR)):
                 self.bCond3 = True
-            if (self.strExitName == 'ES_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate != df['일자'][i]) and (df['ExitLv'][i] < (self.fDayOpen - self.fDayRange_t1 * self.fR1)):
+            if (self.strExitName == 'ES_TS') and (self.strExitDate == df['일자'][i]) and (self.strEntryDate != df['일자'][i]) and (df['ExitLv'][i] < (self.fDayOpen - self.fDayRange_t1 * self.fR)):
                 self.bCond4 = True
 
             if df['일자'][i] == df['일자'][i+1]:
-                # Exit
-                if df['MP'][i] > 0:    # execution
-                    if self.fEL_TS != 0.0:
-                        if df['저가'][i] <= self.fEL_TS:
-                            df.loc[i, 'ExitLv'] = min(self.fEL_TS, df['시가'][i])
-                            df.loc[i, 'MP'] = 0
-                            self.strExitName = 'EL_TS'
-                            self.strExitDate = df['일자'][i]
-                            self.fEL_TS = 0.0
-                    else:   # setup
-                        self.fEL_TS = df['고가'][self.nEntryIdx-1:i].max() - df['ATR'][i] * self.fR2
-                if df['MP'][i] < 0:
-                    if self.fES_TS != 0.0:
-                        if df['고가'][i] >= self.fES_TS:
-                            df.loc[i, 'ExitLv'] = max(self.fES_TS, df['시가'][i])
-                            df.loc[i, 'MP'] = 0
-                            self.strExitName = 'ES_TS'
-                            self.strExitDate = df['일자'][i]
-                            self.fES_TS = 0.0
-                    else:   # setup
-                        self.fES_TS = df['저가'][self.nEntryIdx-1:i].min() + df['ATR'][i] * self.fR2
-                        
                 # Entry
                 if int(df['시간'][i]) <= self.nEntryLimit:
-                    if self.fBuyPrice != 0.0 and df['고가'][i] >= self.fBuyPrice:    # execution
-                        df.loc[i, 'MP'] = 1
-                        df.loc[i, 'EntryLv'] = max(self.fBuyPrice, df['시가'][i])
-                        self.fBuyPrice = 0.0
-                        self.nEntryIdx = i
-                    if self.fSellPrice != 0.0 and df['저가'][i] <= self.fSellPrice:
-                        df.loc[i, 'MP'] = -1
-                        df.loc[i, 'EntryLv'] = min(self.fSellPrice, df['시가'][i])
-                        self.fSellPrice = 0.0
-                        self.nEntryIdx = i
                     if (self.bCond1 == False) and (self.bCond3 == False) and (df['MP'][i] <= 0): # setup
-                        self.fBuyPrice = self.fDayOpen + self.fDayRange_t1 * self.fR1
+                        if self.fBuyPrice != 0.0 and df['고가'][i] >= self.fBuyPrice:    # execution
+                            df.loc[i, 'MP'] = 1
+                            df.loc[i, 'EntryLv'] = max(self.fBuyPrice, df['시가'][i])
+                            self.strEntryDate = df['일자'][self.nEntryIdx]
+                            if df['MP'][i-1] != 0:
+                                self.strExitDate = df['일자'][i]
+                                self.strExitName = 'EL_RS'
+                            self.nEntryIdx = i
                     if (self.bCond2 == False) and (self.bCond4 == False) and (df['MP'][i] >= 0):
-                        self.fSellPrice = self.fDayOpen - self.fDayRange_t1 * self.fR1
-
+                        if self.fSellPrice != 0.0 and df['저가'][i] <= self.fSellPrice:
+                            df.loc[i, 'MP'] = -1
+                            df.loc[i, 'EntryLv'] = min(self.fSellPrice, df['시가'][i])
+                            self.strEntryDate = df['일자'][self.nEntryIdx]
+                            if df['MP'][i-1] != 0:
+                                self.strExitDate = df['일자'][i]
+                                self.strExitName = 'ES_RS'
+                            self.nEntryIdx = i
+                    
             else:
                 # Exit - end of day
                 if df['MP'][i-1] == 1:
                     if (df['EntryLv'][i-1] > df['종가'][i-1]) or (self.fDayLow < (self.fDayOpen - self.fDayRange_t1 * self.fR1)):
                         df.loc[i, 'ExitLv'] = df['종가'][i]
                         df.loc[i, 'MP'] = 0
-                        self.strExitName = 'EL_ED'
+                        self.strEntryDate = df['일자'][self.nEntryIdx]
                         self.strExitDate = df['일자'][i]
+                        self.strExitName = 'EL_ED'
                 if df['MP'][i-1] == -1:
                     if (df['EntryLv'][i-1] < df['종가'][i-1]) or (self.fDayHigh > (self.fDayOpen + self.fDayRange_t1 * self.fR1)):
                         df.loc[i, 'ExitLv'] = df['종가'][i]
                         df.loc[i, 'MP'] = 0
-                        self.strExitName = 'ES_ED'
+                        self.strEntryDate = df['일자'][self.nEntryIdx]
                         self.strExitDate = df['일자'][i]
+                        self.strExitName = 'ES_ED'
 
             # Position check
         #     if df['MP'][i] != df['MP'][i-1]:
@@ -256,24 +240,6 @@ class TS_RB_0044():
             
         df = self.lstData[self.ix]
 
-        # Exit
-        if self.fEL_TS != 0.0:
-            if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0):
-                if self.npPriceInfo['현재가'] >= self.fEL_TS and PriceInfo['현재가'] <= self.fEL_TS:
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] = 0
-                    self.fEL_TS = 0.0
-                    self.logger.info('ExitLong %s amount ordered', self.amt_exit)
-                    self.chkPos(-self.amt_exit)
-        if self.fES_TS != 0.0:
-            if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
-                if self.npPriceInfo['현재가'] <= self.fES_TS and PriceInfo['현재가'] >= self.fES_TS:
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] = 0
-                    self.fES_TS = 0.0
-                    self.logger.info('ExitShort %s amount ordered', self.amt_exit)
-                    self.chkPos(self.amt_exit)
-
         # Entry
         if dt.datetime.now().time() < self.dtEntryLimit:
             if self.fBuyPrice != 0.0:
@@ -281,7 +247,6 @@ class TS_RB_0044():
                     if (self.npPriceInfo['현재가'] <= self.fBuyPrice) and (PriceInfo['현재가'] >= self.fBuyPrice):
                         Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])
                         df.loc[len(df)-1, 'MP'] = 1
-                        self.fBuyPrice = 0.0
                         self.logger.info('Buy %s amount ordered', self.amt_entry)
                         self.chkPos(self.amt_entry)
             if self.fSellPrice != 0.0:
@@ -289,7 +254,6 @@ class TS_RB_0044():
                     if (self.npPriceInfo['현재가'] >= self.fSellPrice) and (PriceInfo['현재가'] <= self.fSellPrice):
                         Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
                         df.loc[len(df)-1, 'MP'] = -1
-                        self.fSellPrice = 0.0
                         self.logger.info('Sell %s amount ordered', self.amt_entry)
                         self.chkPos(-self.amt_entry)
 
@@ -300,13 +264,13 @@ class TS_RB_0044():
         if self.isON == False:    # 당일 종가 청산
             df = self.lstData[self.ix]
             if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0):
-                if (df.iloc[-2]['EntryLv'] > df.iloc[-2]['종가']) or (self.fDayLow < (self.fDayOpen - self.fDayRange_t1 * self.fR1)):
+                if (df.iloc[-2]['EntryLv'] > df.iloc[-2]['종가']) or (self.fDayLow < (self.fDayOpen - self.fDayRange_t1 * self.fR)):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_exit, 0)
                     df.loc[len(df)-1, 'MP'] = 0
                     self.logger.info('ExitLong %s amount ordered', self.amt_exit)
                     self.chkPos(-self.amt_exit)
             if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
-                if (df.iloc[-2]['EntryLv'] < df.iloc[-2]['종가']) or (self.fDayHigh > (self.fDayOpen + self.fDayRange_t1 * self.fR1)):
+                if (df.iloc[-2]['EntryLv'] < df.iloc[-2]['종가']) or (self.fDayHigh > (self.fDayOpen + self.fDayRange_t1 * self.fR)):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_exit, 0)
                     df.loc[len(df)-1, 'MP'] = 0
                     self.logger.info('ExitShort %s amount ordered', self.amt_exit)
