@@ -45,6 +45,7 @@ class TS_RB_0033():
 
         # Local setting variables
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
+        self.strMarket_close_time = str(Strategy.MARKETCLOSE_HOUR) + str(Strategy.MARKETCLOSE_MIN) + '00'
         self.nFLen = 5
         self.nSLen = 30
         self.nADXLen = 12
@@ -100,7 +101,7 @@ class TS_RB_0033():
         for i in df.index-1:
             if i < self.nSLen:
                 continue
-
+            
             df.loc[i, 'MP'] = df['MP'][i-1]
             df.loc[i, 'EntryLv'] = df['EntryLv'][i-1]
             df.loc[i, 'ExitLv'] = df['ExitLv'][i-1]
@@ -128,94 +129,92 @@ class TS_RB_0033():
             else:
                 self.bSFlag = False
             
-            if df['시간'][i].startswith('1545'):
-                continue
-
-            # Entry
-            if df['MP'][i] <= 0:
-                if self.fBuyPrice1 != 0.0 and df['고가'][i] >= self.fBuyPrice1:    # execution
-                    if df['시가'][i] > self.fBuyPrice1:
-                        df.loc[i, 'EntryLv'] = df['시가'][i]
-                    else:
-                        df.loc[i, 'EntryLv'] = self.fBuyPrice1
-                    if df['MP'][i-1] < 0:
-                        df.loc[i, 'MP'] = 1
-                    else:
-                        df.loc[i, 'MP'] += 1
-                    self.fBuyPrice1 = 0.0
-            else:
-                if self.fBuyPrice2 != 0.0 and df['고가'][i] >= self.fBuyPrice2:
-                    if df['시가'][i] > self.fBuyPrice2:
-                        df.loc[i, 'EntryLv'] = df['시가'][i]
-                    else:
-                        df.loc[i, 'EntryLv'] = self.fBuyPrice2
-                    if df['MP'][i-1] < 0:
-                        df.loc[i, 'MP'] = 1
-                    else:
-                        df.loc[i, 'MP'] += 1
-                    self.fBuyPrice2 = 0.0
-            if df['MP'][i] >= 0:
-                if self.fSellPrice1 != 0.0 and df['저가'][i] <= self.fSellPrice1:
-                    if df['시가'][i] < self.fSellPrice1:
-                        df.loc[i, 'EntryLv'] = df['시가'][i]
-                    else:
-                        df.loc[i, 'EntryLv'] = self.fSellPrice1
-                    if df['MP'][i-1] > 0:
-                        df.loc[i, 'MP'] = -1
-                    else:
-                        df.loc[i, 'MP'] -= 1
-                    self.fSellPrice1 = 0.0
-            else:
-                if self.fSellPrice2 != 0.0 and df['저가'][i] <= self.fSellPrice2:
-                    if df['시가'][i] < self.fSellPrice2:
-                        df.loc[i, 'EntryLv'] = df['시가'][i]
-                    else:
-                        df.loc[i, 'EntryLv'] = self.fSellPrice2
-                    if df['MP'][i-1] > 0:
-                        df.loc[i, 'MP'] = -1
-                    else:
-                        df.loc[i, 'MP'] -= 1
-                    self.fSellPrice2 = 0.0
-            
-            if (self.bLSetup and df['MP'][i] < 1) or (self.bBFlag and abs(df['MP'][i]) < 3):    # setup
-                if df['MP'][i] < 1:
-                    self.fBuyPrice1 = df['고가'][i] + 1
+            if df['시간'][i] != self.strMarket_close_time:
+                # Entry
+                if df['MP'][i] <= 0:
+                    if self.fBuyPrice1 != 0.0 and df['고가'][i] >= self.fBuyPrice1:    # execution
+                        if df['시가'][i] > self.fBuyPrice1:
+                            df.loc[i, 'EntryLv'] = df['시가'][i]
+                        else:
+                            df.loc[i, 'EntryLv'] = self.fBuyPrice1
+                        if df['MP'][i-1] < 0:
+                            df.loc[i, 'MP'] = 1
+                        else:
+                            df.loc[i, 'MP'] += 1
+                        self.fBuyPrice1 = 0.0
                 else:
-                    self.fBuyPrice2 = df['TRIA1'][i] + 1
-            else:
-                self.fBuyPrice1 = 0.0
-                self.fBuyPrice2 = 0.0
-            if (self.bSSetup and df['MP'][i] > -1) or (self.bSFlag and abs(df['MP'][i]) < 3):
-                if df['MP'][i] > -1:
-                    self.fSellPrice1 = df['저가'][i] - 1
+                    if self.fBuyPrice2 != 0.0 and df['고가'][i] >= self.fBuyPrice2:
+                        if df['시가'][i] > self.fBuyPrice2:
+                            df.loc[i, 'EntryLv'] = df['시가'][i]
+                        else:
+                            df.loc[i, 'EntryLv'] = self.fBuyPrice2
+                        if df['MP'][i-1] < 0:
+                            df.loc[i, 'MP'] = 1
+                        else:
+                            df.loc[i, 'MP'] += 1
+                        self.fBuyPrice2 = 0.0
+                if df['MP'][i] >= 0:
+                    if self.fSellPrice1 != 0.0 and df['저가'][i] <= self.fSellPrice1:
+                        if df['시가'][i] < self.fSellPrice1:
+                            df.loc[i, 'EntryLv'] = df['시가'][i]
+                        else:
+                            df.loc[i, 'EntryLv'] = self.fSellPrice1
+                        if df['MP'][i-1] > 0:
+                            df.loc[i, 'MP'] = -1
+                        else:
+                            df.loc[i, 'MP'] -= 1
+                        self.fSellPrice1 = 0.0
                 else:
-                    self.fSellPrice2 = df['TRIA1'][i] - 1
-            else:
-                self.fSellPrice1 = 0.0
-                self.fSellPrice2 = 0.0
-
-            # Exit
-            if df['MP'][i-1] > 0:    # execution
-                if self.fEL != 0.0 and df['저가'][i] <= self.fEL:
-                    if df['시가'][i] < self.fEL:
-                        df.loc[i, 'ExitLv'] = df['시가'][i]
-                    else:
-                        df.loc[i, 'ExitLv'] = self.fEL
-                    df.loc[i, 'MP'] = 0
-                    self.fEL = 0.0
-            if df['MP'][i-1] < 0:
-                if self.fES != 0.0 and df['고가'][i] >= self.fES:
-                    if df['시가'][i] > self.fES:
-                        df.loc[i, 'ExitLv'] = df['시가'][i]
-                    else:
-                        df.loc[i, 'ExitLv'] = self.fES
-                    df.loc[i, 'MP'] = 0
-                    self.fES = 0.0
+                    if self.fSellPrice2 != 0.0 and df['저가'][i] <= self.fSellPrice2:
+                        if df['시가'][i] < self.fSellPrice2:
+                            df.loc[i, 'EntryLv'] = df['시가'][i]
+                        else:
+                            df.loc[i, 'EntryLv'] = self.fSellPrice2
+                        if df['MP'][i-1] > 0:
+                            df.loc[i, 'MP'] = -1
+                        else:
+                            df.loc[i, 'MP'] -= 1
+                        self.fSellPrice2 = 0.0
                 
-            if df['MP'][i] > 0:    # setup
-                self.fEL = df['TRIA2'][i] - 1
-            if df['MP'][i] < 0:
-                self.fES = df['TRIA2'][i] + 1
+                if (self.bLSetup and df['MP'][i] < 1) or (self.bBFlag and abs(df['MP'][i]) < 3):    # setup
+                    if df['MP'][i] < 1:
+                        self.fBuyPrice1 = df['고가'][i] + 1
+                    else:
+                        self.fBuyPrice2 = df['TRIA1'][i] + 1
+                else:
+                    self.fBuyPrice1 = 0.0
+                    self.fBuyPrice2 = 0.0
+                if (self.bSSetup and df['MP'][i] > -1) or (self.bSFlag and abs(df['MP'][i]) < 3):
+                    if df['MP'][i] > -1:
+                        self.fSellPrice1 = df['저가'][i] - 1
+                    else:
+                        self.fSellPrice2 = df['TRIA1'][i] - 1
+                else:
+                    self.fSellPrice1 = 0.0
+                    self.fSellPrice2 = 0.0
+
+                # Exit
+                if df['MP'][i-1] > 0:    # execution
+                    if self.fEL != 0.0 and df['저가'][i] <= self.fEL:
+                        if df['시가'][i] < self.fEL:
+                            df.loc[i, 'ExitLv'] = df['시가'][i]
+                        else:
+                            df.loc[i, 'ExitLv'] = self.fEL
+                        df.loc[i, 'MP'] = 0
+                        self.fEL = 0.0
+                if df['MP'][i-1] < 0:
+                    if self.fES != 0.0 and df['고가'][i] >= self.fES:
+                        if df['시가'][i] > self.fES:
+                            df.loc[i, 'ExitLv'] = df['시가'][i]
+                        else:
+                            df.loc[i, 'ExitLv'] = self.fES
+                        df.loc[i, 'MP'] = 0
+                        self.fES = 0.0
+                    
+                if df['MP'][i] > 0:    # setup
+                    self.fEL = df['TRIA2'][i] - 1
+                if df['MP'][i] < 0:
+                    self.fES = df['TRIA2'][i] + 1
 
             # Position check
             if df['MP'][i] != df['MP'][i-1]:

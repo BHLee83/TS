@@ -91,7 +91,7 @@ class TS_RB_0027():
         df['BuySetup'] = 0.0
         df['SellSetup'] = 0.0
         dfSignal = pd.DataFrame(None, columns=df.columns)
-        for i in df.index:
+        for i in df.index-1:
             if i < self.nCCILen:
                 continue
 
@@ -175,6 +175,7 @@ class TS_RB_0027():
         if type(PriceInfo) == int:  # 최초 실행시
             self.common()
             self.chkPos()
+            self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             return
         
         if self.npPriceInfo == None:    # 첫 데이터 수신시
@@ -184,6 +185,7 @@ class TS_RB_0027():
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
         (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
             self.common()
+            self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
         
         df = self.lstData[self.ix]
 

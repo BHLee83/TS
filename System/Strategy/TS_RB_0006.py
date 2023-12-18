@@ -43,7 +43,7 @@ class TS_RB_0006():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nWeek*14)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nWeek*50)
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
@@ -77,7 +77,7 @@ class TS_RB_0006():
             df.loc[i, 'chLower'] = df['chLower'][i-1]
                 
             cnt = 0 # nWeek 주 가격 탐색
-            for j in range(i, 1, -1):
+            for j in range(i, 0, -1):
                 if df['woy'][j] != df['woy'][j-1]:
                     cnt += 1
                     if cnt == 1:
@@ -88,7 +88,7 @@ class TS_RB_0006():
             df.loc[i, 'chUpper'] = df['고가'][ixStart:ixEnd].max()  # nWeek 주 고가
             df.loc[i, 'chLower'] = df['저가'][ixStart:ixEnd].min()  # nWeek 주 저가
             
-            if i == df.last_valid_index:
+            if i == df.last_valid_index():
                 continue
 
             if df['고가'][i] >= df['chUpper'][i]:   # 채널 상단 돌파 매수

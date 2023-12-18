@@ -49,7 +49,7 @@ class TS_RB_0007():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nWeek_entry*34)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nWeek_entry*50)
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
@@ -90,7 +90,7 @@ class TS_RB_0007():
             
             if df['woy'][i] != df['woy'][i-1]:  # nWeek 주 가격 탐색
                 cnt = 0
-                for j in range(i, 1, -1):
+                for j in range(i, 0, -1):
                     if df['woy'][j] != df['woy'][j-1]:
                         cnt += 1
                         if cnt == 1:
@@ -105,7 +105,7 @@ class TS_RB_0007():
                 df.loc[i, 'chUpper_exit'] = df['고가'][ixStart_exit:ixEnd].max()    # 청산용 고/저 채널
                 df.loc[i, 'chLower_exit'] = df['저가'][ixStart_exit:ixEnd].min()
 
-            if i == df.last_valid_index:
+            if i == df.last_valid_index():
                 continue
 
             if self.isFirstTry:

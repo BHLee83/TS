@@ -3,9 +3,8 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 import math
+import talib as ta
 import logging
-
-from PyQt5.QtCore import QTimer
 
 from DB.dbconn import oracleDB
 
