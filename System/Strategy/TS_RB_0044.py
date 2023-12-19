@@ -117,8 +117,8 @@ class TS_RB_0044():
                 self.fDayOpen = df['시가'][i]
                 self.fDayHigh = df['고가'][i]
                 self.fDayLow = df['저가'][i]
-                dayHigh_t1 = df[(df['일자'] >= df['일자'][i-1]) & (df['일자'] < df['일자'][i])]['고가'].max()
-                dayLow_t1 = df[(df['일자'] >= df['일자'][i-1]) & (df['일자'] < df['일자'][i])]['저가'].min()
+                dayHigh_t1 = df[df['일자'] == df['일자'][i-1]]['고가'].max()
+                dayLow_t1 = df[df['일자'] == df['일자'][i-1]]['저가'].min()
                 self.fDayRange_t1 = dayHigh_t1 - dayLow_t1
                 self.fBuyPrice = self.fDayOpen + self.fDayRange_t1 * self.fR
                 self.fSellPrice = self.fDayOpen - self.fDayRange_t1 * self.fR
@@ -214,31 +214,43 @@ class TS_RB_0044():
             self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             return
         
+        df = self.lstData[self.ix]
         if self.npPriceInfo == None:    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
-            self.npPriceInfo['체결시간'] = self.lstData[self.ix].iloc[-2]['시간'].encode()
-            self.npPriceInfo['현재가'] = self.lstData[self.ix].iloc[-2]['종가']
-            # Profitable Open Stop
-            self.fDayOpen = PriceInfo['현재가']
-            if self.nDaysSinceEntry == self.nDayIn-1:
-                if (self.lstData[self.ix].iloc[-1]['MP'] > 0) and (self.lstData[self.ix].iloc[-2]['EntryLv'] < self.fDayOpen):
-                    # Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
-                    self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = 0
-                    self.logger.info('ExitLong %s amount ordered', self.amt_exit)
-                    self.chkPos(-self.amt_exit)
-                if (self.lstData[self.ix].iloc[-1]['MP'] < 0) and (self.lstData[self.ix].iloc[-2]['EntryLv'] > self.fDayOpen):
-                    # Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
-                    self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = 0
-                    self.logger.info('ExitShort %s amount ordered', self.amt_exit)
-                    self.chkPos(self.amt_exit)
+            for i in range(df.last_valid_index(), 0, -1):
+                if df['일자'][i] != df['일자'][i-1]:
+                    self.npPriceInfo['체결시간'] = df.iloc[i-1]['시간'].encode()
+                    self.npPriceInfo['현재가'] = df.iloc[i-1]['종가']
+                    if df['시가'][i] == 0.0:
+                        self.fDayOpen = PriceInfo['현재가']
+                    else:
+                        self.fDayOpen = df['시가'][i]
+                    dayHigh_t1 = df[df['일자'] == df['일자'][i-1]]['고가'].max()
+                    dayLow_t1 = df[df['일자'] == df['일자'][i-1]]['저가'].min()
+                    self.fDayRange_t1 = dayHigh_t1 - dayLow_t1
+                    self.fBuyPrice = self.fDayOpen + self.fDayRange_t1 * self.fR
+                    self.fSellPrice = self.fDayOpen - self.fDayRange_t1 * self.fR
+                    break
+            if df.iloc[-2]['일자'] != df.iloc[-1]['일자']:
+                # Profitable Open Stop
+                if self.nDaysSinceEntry == self.nDayIn-1:
+                    if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0) and (df.iloc[-2]['EntryLv'] < self.fDayOpen):
+                        Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
+                        df.loc[len(df)-1, 'MP'] = 0
+                        self.logger.info('ExitLong %s amount ordered', self.amt_exit)
+                        self.chkPos(-self.amt_exit)
+                    if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0) and (df.iloc[-2]['EntryLv'] > self.fDayOpen):
+                        Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
+                        df.loc[len(df)-1, 'MP'] = 0
+                        self.logger.info('ExitShort %s amount ordered', self.amt_exit)
+                        self.chkPos(self.amt_exit)
 
         # 분봉 업데이트 시
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
         (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
             self.common()
-            self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
+            df.loc[len(df)-1, 'MP'] = df.iloc[-2]['MP']
             
-        df = self.lstData[self.ix]
 
         # Entry
         if dt.datetime.now().time() < self.dtEntryLimit:
