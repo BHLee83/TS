@@ -139,7 +139,6 @@ class TS_RB_0045():
                         if self.fSellPrice != 0.0 and df['저가'][i] <= self.fSellPrice:
                             df.loc[i, 'MP'] = -1
                             df.loc[i, 'EntryLv'] = min(self.fSellPrice, df['시가'][i])
-                        
 
             # Position check
         #     if df['MP'][i] != df['MP'][i-1]:
@@ -159,35 +158,33 @@ class TS_RB_0045():
         df = self.lstData[self.ix]
         if self.npPriceInfo == None:    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
-            for i in range(df.last_valid_index(), 0, -1):
-                if df['일자'][i] != df['일자'][i-1]:
-                    self.npPriceInfo['체결시간'] = df.iloc[i-1]['시간'].encode()
-                    self.npPriceInfo['현재가'] = df.iloc[i-1]['종가']
-                    if df['시가'][i] == 0.0:
-                        self.fDayOpen = PriceInfo['현재가']
-                    else:
-                        self.fDayOpen = df['시가'][i]
-                    self.fDayHigh_t1 = df[df['일자'] == df['일자'][i-1]]['고가'].max()
-                    self.fDayLow_t1 = df[df['일자'] == df['일자'][i-1]]['저가'].min()
-                    self.fDayClose_t1 = df['종가'][i-1]
-                    if self.fDayOpen > self.fDayClose_t1:
-                        self.fDemarkLine1 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayLow_t1
-                        self.fDemarkLine2 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayHigh_t1
-                    elif self.fDayOpen < self.fDayClose_t1:
-                        self.fDemarkLine1 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
-                        self.fDemarkLine2 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
-                    else:
-                        self.fDemarkLine1 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
-                        self.fDemarkLine2 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
-                    if self.fDayOpen > self.fDemarkLine1:
-                        self.fBuyPrice = self.fDayOpen + (self.fDemarkLine1 - self.fDemarkLine2) * self.fR
-                    if self.fDayOpen < self.fDemarkLine2:
-                        self.fBuyPrice = self.fDemarkLine2
-                    if self.fDayOpen > self.fDemarkLine1:
-                        self.fSellPrice = self.fDemarkLine1
-                    if self.fDayOpen < self.fDemarkLine2:
-                        self.fSellPrice = self.fDayOpen - (self.fDemarkLine1 - self.fDemarkLine2) * self.fR
-                    break
+            if df.iloc[-2]['일자'] != df.iloc[-1]['일자']:
+                self.npPriceInfo['체결시간'] = df.iloc[-2]['시간'].encode()
+                self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
+                if df.iloc[-1]['시가'] == 0.0:
+                    self.fDayOpen = PriceInfo['현재가']
+                else:
+                    self.fDayOpen = df.iloc[-1]['시가']
+                self.fDayHigh_t1 = df[df['일자'] == df.iloc[-2]['일자']]['고가'].max()
+                self.fDayLow_t1 = df[df['일자'] == df.iloc[-2]['일자']]['저가'].min()
+                self.fDayClose_t1 = df.iloc[-2]['종가']
+                if self.fDayOpen > self.fDayClose_t1:
+                    self.fDemarkLine1 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayLow_t1
+                    self.fDemarkLine2 = (self.fDayHigh_t1 + self.fDayClose_t1 + 2 * self.fDayLow_t1) / 2 - self.fDayHigh_t1
+                elif self.fDayOpen < self.fDayClose_t1:
+                    self.fDemarkLine1 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
+                    self.fDemarkLine2 = (2 * self.fDayHigh_t1 + self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
+                else:
+                    self.fDemarkLine1 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayLow_t1
+                    self.fDemarkLine2 = (self.fDayHigh_t1 + 2 * self.fDayClose_t1 + self.fDayLow_t1) / 2 - self.fDayHigh_t1
+                if self.fDayOpen > self.fDemarkLine1:
+                    self.fBuyPrice = self.fDayOpen + (self.fDemarkLine1 - self.fDemarkLine2) * self.fR
+                if self.fDayOpen < self.fDemarkLine2:
+                    self.fBuyPrice = self.fDemarkLine2
+                if self.fDayOpen > self.fDemarkLine1:
+                    self.fSellPrice = self.fDemarkLine1
+                if self.fDayOpen < self.fDemarkLine2:
+                    self.fSellPrice = self.fDayOpen - (self.fDemarkLine1 - self.fDemarkLine2) * self.fR
             
         # 분봉 업데이트 시
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \

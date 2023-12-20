@@ -217,21 +217,18 @@ class TS_RB_0044():
         df = self.lstData[self.ix]
         if self.npPriceInfo == None:    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
-            for i in range(df.last_valid_index(), 0, -1):
-                if df['일자'][i] != df['일자'][i-1]:
-                    self.npPriceInfo['체결시간'] = df.iloc[i-1]['시간'].encode()
-                    self.npPriceInfo['현재가'] = df.iloc[i-1]['종가']
-                    if df['시가'][i] == 0.0:
-                        self.fDayOpen = PriceInfo['현재가']
-                    else:
-                        self.fDayOpen = df['시가'][i]
-                    dayHigh_t1 = df[df['일자'] == df['일자'][i-1]]['고가'].max()
-                    dayLow_t1 = df[df['일자'] == df['일자'][i-1]]['저가'].min()
-                    self.fDayRange_t1 = dayHigh_t1 - dayLow_t1
-                    self.fBuyPrice = self.fDayOpen + self.fDayRange_t1 * self.fR
-                    self.fSellPrice = self.fDayOpen - self.fDayRange_t1 * self.fR
-                    break
             if df.iloc[-2]['일자'] != df.iloc[-1]['일자']:
+                self.npPriceInfo['체결시간'] = df.iloc[-2]['시간'].encode()
+                self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
+                if df.iloc[-1]['시가'] == 0.0:
+                    self.fDayOpen = PriceInfo['현재가']
+                else:
+                    self.fDayOpen = df.iloc[-1]['시가']
+                dayHigh_t1 = df[df['일자'] == df.iloc[-2]['일자']]['고가'].max()
+                dayLow_t1 = df[df['일자'] == df.iloc[-2]['일자']]['저가'].min()
+                self.fDayRange_t1 = dayHigh_t1 - dayLow_t1
+                self.fBuyPrice = self.fDayOpen + self.fDayRange_t1 * self.fR
+                self.fSellPrice = self.fDayOpen - self.fDayRange_t1 * self.fR
                 # Profitable Open Stop
                 if self.nDaysSinceEntry == self.nDayIn-1:
                     if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0) and (df.iloc[-2]['EntryLv'] < self.fDayOpen):
