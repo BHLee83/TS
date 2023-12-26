@@ -108,7 +108,7 @@ class TS_RB_0016_1():
             self.chkPos()
             return
         
-        if self.npPriceInfo == None:    # 첫 데이터 수신시
+        if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
 
         # 분봉 업데이트 시

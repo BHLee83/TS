@@ -215,15 +215,10 @@ class TS_RB_0044():
             return
         
         df = self.lstData[self.ix]
-        if self.npPriceInfo == None:    # 첫 데이터 수신시
+        if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
             if df.iloc[-2]['일자'] != df.iloc[-1]['일자']:
-                self.npPriceInfo['체결시간'] = df.iloc[-2]['시간'].encode()
-                self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
-                if df.iloc[-1]['시가'] == 0.0:
-                    self.fDayOpen = PriceInfo['현재가']
-                else:
-                    self.fDayOpen = df.iloc[-1]['시가']
+                self.fDayOpen = PriceInfo['현재가']
                 dayHigh_t1 = df[df['일자'] == df.iloc[-2]['일자']]['고가'].max()
                 dayLow_t1 = df[df['일자'] == df.iloc[-2]['일자']]['저가'].min()
                 self.fDayRange_t1 = dayHigh_t1 - dayLow_t1

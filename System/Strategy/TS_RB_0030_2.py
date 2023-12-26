@@ -134,7 +134,7 @@ class TS_RB_0030_2():
             self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             return
         
-        if self.npPriceInfo == None:    # 첫 데이터 수신시
+        if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
 
         df = self.lstData[self.ix]

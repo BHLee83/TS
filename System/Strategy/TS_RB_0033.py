@@ -106,29 +106,6 @@ class TS_RB_0033():
             df.loc[i, 'EntryLv'] = df['EntryLv'][i-1]
             df.loc[i, 'ExitLv'] = df['ExitLv'][i-1]
             
-            # Setup
-            if df['TRIA1'][i] > df['TRIA2'][i]:
-                self.bLSetup = True
-            else:
-                self.bLSetup = False
-            if df['TRIA1'][i] < df['TRIA2'][i]:
-                self.bSSetup = True
-            else:
-                self.bSSetup = False
-            if df['ADXVal'][i] > df['ADXVal'][i-self.nFLen]:
-                self.bADXSetup = True
-            else:
-                self.bADXSetup = False
-                
-            if self.bLSetup and self.bADXSetup and df['고가'][i] < df['TRIA1'][i]:
-                self.bBFlag = True
-            else:
-                self.bBFlag = False
-            if self.bSSetup and self.bADXSetup and df['저가'][i] > df['TRIA1'][i]:
-                self.bSFlag = True
-            else:
-                self.bSFlag = False
-            
             if df['시간'][i] != self.strMarket_close_time:
                 # Entry
                 if df['MP'][i] <= 0:
@@ -194,7 +171,7 @@ class TS_RB_0033():
                     self.fSellPrice2 = 0.0
 
                 # Exit
-                if df['MP'][i-1] > 0:    # execution
+                if (df['MP'][i-1] > 0) and (df['MP'][i] > 0):    # execution
                     if self.fEL != 0.0 and df['저가'][i] <= self.fEL:
                         if df['시가'][i] < self.fEL:
                             df.loc[i, 'ExitLv'] = df['시가'][i]
@@ -202,7 +179,7 @@ class TS_RB_0033():
                             df.loc[i, 'ExitLv'] = self.fEL
                         df.loc[i, 'MP'] = 0
                         self.fEL = 0.0
-                if df['MP'][i-1] < 0:
+                if (df['MP'][i-1] < 0) and (df['MP'][i] < 0):
                     if self.fES != 0.0 and df['고가'][i] >= self.fES:
                         if df['시가'][i] > self.fES:
                             df.loc[i, 'ExitLv'] = df['시가'][i]
@@ -210,11 +187,34 @@ class TS_RB_0033():
                             df.loc[i, 'ExitLv'] = self.fES
                         df.loc[i, 'MP'] = 0
                         self.fES = 0.0
-                    
-                if df['MP'][i] > 0:    # setup
-                    self.fEL = df['TRIA2'][i] - 1
-                if df['MP'][i] < 0:
-                    self.fES = df['TRIA2'][i] + 1
+            
+            # Setup
+            if df['TRIA1'][i] > df['TRIA2'][i]:
+                self.bLSetup = True
+            else:
+                self.bLSetup = False
+            if df['TRIA1'][i] < df['TRIA2'][i]:
+                self.bSSetup = True
+            else:
+                self.bSSetup = False
+            if df['ADXVal'][i] > df['ADXVal'][i-self.nFLen]:
+                self.bADXSetup = True
+            else:
+                self.bADXSetup = False
+                
+            if self.bLSetup and self.bADXSetup and df['고가'][i] < df['TRIA1'][i]:
+                self.bBFlag = True
+            else:
+                self.bBFlag = False
+            if self.bSSetup and self.bADXSetup and df['저가'][i] > df['TRIA1'][i]:
+                self.bSFlag = True
+            else:
+                self.bSFlag = False
+
+            if df['MP'][i] > 0:    # setup
+                self.fEL = df['TRIA2'][i] - 1
+            if df['MP'][i] < 0:
+                self.fES = df['TRIA2'][i] + 1
 
             # Position check
             if df['MP'][i] != df['MP'][i-1]:
@@ -229,7 +229,7 @@ class TS_RB_0033():
             self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
             return
         
-        if self.npPriceInfo == None:    # 첫 데이터 수신시
+        if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
             self.npPriceInfo = PriceInfo.copy()
 
         # 분봉 업데이트 시
