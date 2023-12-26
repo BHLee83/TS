@@ -32,6 +32,8 @@ class Interface():
         self.boolSysReady = False
         self.event_loop = QEventLoop()
         self.main_path = os.path.dirname(os.path.abspath(__file__))
+        self.strWinPath = os.environ['SystemRoot']
+        self.strWinSoundPath = self.strWinPath + "\\Media\\Ring07.wav"
         self.strStrategyPath = 'System.Strategy'
         self.strStrategyClass = 'System'
         self.strSettleCrncy = 'KRW'
@@ -83,6 +85,7 @@ class Interface():
             self.initDate()
             self.initAcntInfo()
             self.initStrategyInfo() # 초기 전략 세팅
+            Strategy.strWinSoundPath = self.strWinSoundPath
             
             # Events
             self.wndIndi.cbAcntCode.currentIndexChanged.connect(self.initAcntInfo)    # 종목코드 변경

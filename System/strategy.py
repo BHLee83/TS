@@ -5,6 +5,7 @@ import datetime as dt
 import math
 import talib as ta
 import logging
+import winsound
 
 from DB.dbconn import oracleDB
 
@@ -35,6 +36,7 @@ class Strategy(metaclass=SingletonMeta):
     MARKETCLOSE_HOUR = 0
     MARKETCLOSE_MIN = 0
     instDB = oracleDB('oraDB1')    # DB 연결
+    strWinSoundPath = ""
 
     dfCFutMst = pd.DataFrame(None)
     dfStrategyInfo = pd.DataFrame(None)
@@ -191,6 +193,7 @@ class Strategy(metaclass=SingletonMeta):
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], 'M')
                 # ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction, 'M')
                 ret = interface.objOrder.order(acntCode, acntPwd, i, direction, '0', 'M')
+                winsound.PlaySound(Strategy.strWinSoundPath, winsound.SND_ASYNC)
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
@@ -206,6 +209,7 @@ class Strategy(metaclass=SingletonMeta):
                 logging.info('실주문: %s, %s, %s, %s', acntCode, i['PRODUCT_CODE'], i['QUANTITY'], i['PRICE'])
                 # ret = interface.objOrder.order(acntCode, acntPwd, i['PRODUCT_CODE'], abs(i['QUANTITY']), i['PRICE'], direction)
                 ret = interface.objOrder.order(acntCode, acntPwd, i, direction)
+                winsound.PlaySound(Strategy.strWinSoundPath, winsound.SND_ASYNC)
                 if ret is False:
                     logging.warning('주문 실패!')
                     return ret
