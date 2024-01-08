@@ -17,6 +17,7 @@ from SHi_indi.price import Price
 from SHi_indi.priceRT import PriceRT
 from SHi_indi.order import Order
 from SHi_indi.balance import Balance
+from SHi_indi.article import Article
 
 from DB.dbconn import oracleDB
 from System.strategy import Strategy
@@ -73,6 +74,7 @@ class Interface():
         self.priceRT = PriceRT(self)    # 실시간(RT) 시세 조회용
         self.objOrder = Order(self) # 주문
         self.objBalance = Balance(self) # 잔고 조회
+        self.objArticle = Article(self) # 기사 조회
         if self.userEnv.userLogin():    # 로그인
             if not self.boolSysReady:
                 self.event_loop.exec_()
@@ -96,7 +98,7 @@ class Interface():
         # Scheduling
         self.qtTarget = QTime(self.MARKETCLOSE_HOUR, self.MARKETCLOSE_MIN-2, 0)
         self.timer = QTimer()
-        self.timer.timeout.connect(self.lastProc)
+        self.timer.timeout.connect(self.scheduling)
         self.timer.start(1000)
 
 
@@ -256,7 +258,7 @@ class Interface():
         # self.chkStop(PriceInfo) # 5. 실시간 손익 직접 계산
 
 
-    def lastProc(self): # 종가 주문 등 당일 마지막 처리
+    def scheduling(self): # 종가 주문, 뉴스 수신 등 스케줄링 프로세스
         now = QTime.currentTime()
         if now >= self.qtTarget:
             for i in self.lstObj_Strategy:
@@ -265,6 +267,8 @@ class Interface():
             
             self.orderStrategy()    # 접수된 주문 실행
             self.timer.stop()
+        if now.second() == 59:  # 매분 정각 1초전
+            self.objArticle.reqTR(" ", "1", self.strToday)  # 당일 뉴스 조회 (20건 제한)
 
 
     # 주문 실행
