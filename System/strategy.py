@@ -42,6 +42,7 @@ class Strategy(metaclass=SingletonMeta):
     dfStrategyInfo = pd.DataFrame(None)
     dfProductInfo = pd.DataFrame(None)
     dfPosition = pd.DataFrame(None)
+    dfArticle = pd.DataFrame(None)
     lstPriceInfo = []
 
     lstMktData = []

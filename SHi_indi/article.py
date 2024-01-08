@@ -1,6 +1,7 @@
 import pandas as pd
 
 from PyQt5.QAxContainer import *
+from System.strategy import Strategy
 
 
 class Article():
@@ -49,7 +50,7 @@ class Article():
             # 기사 보존 필요 있을 때 아래 코드 사용 (검증 필요)
             # self.dfArticleInfo = pd.merge(self.dfArticleInfo, self.dfArticleNewer, how='outer', on=self.lstColumns).sort_values(by='Time', ascending=False)
             # Strategy.dfArticle = self.dfArticleInfo.copy()
-            self.dfArticleInfo = self.dfArticleNewer.copy()
+            Strategy.dfArticle = self.dfArticleNewer.copy()
 
         self.rqidD.__delitem__(rqid)
 
