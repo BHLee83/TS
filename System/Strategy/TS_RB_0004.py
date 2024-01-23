@@ -170,8 +170,8 @@ class TS_RB_0004():
 
         df = self.lstData[self.ix]
         if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
-            self.npPriceInfo = PriceInfo.copy()
-            if PriceInfo['현재가'] == PriceInfo['시가']:    # 시초가인 경우
+            if self.npPriceInfo == None:
+                self.npPriceInfo = PriceInfo.copy()
                 self.npPriceInfo['체결시간'] = df.iloc[-2]['시간']  # 전봉 정보 세팅
                 self.npPriceInfo['시가'] = df.iloc[-2]['시가']
                 self.npPriceInfo['고가'] = df.iloc[-2]['고가']

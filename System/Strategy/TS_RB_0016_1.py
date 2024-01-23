@@ -108,8 +108,14 @@ class TS_RB_0016_1():
             self.chkPos()
             return
         
+        df = self.lstData[self.ix]
         if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
-            self.npPriceInfo = PriceInfo.copy()
+            if self.npPriceInfo == None:
+                self.npPriceInfo = PriceInfo.copy()
+                self.npPriceInfo['시가'] = df.iloc[-2]['시가']  # 전봉 정보 세팅
+                self.npPriceInfo['고가'] = df.iloc[-2]['고가']
+                self.npPriceInfo['저가'] = df.iloc[-2]['저가']
+                self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
 
         # 분봉 업데이트 시
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \

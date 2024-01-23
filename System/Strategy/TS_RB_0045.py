@@ -157,9 +157,14 @@ class TS_RB_0045():
         
         df = self.lstData[self.ix]
         if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
-            self.npPriceInfo = PriceInfo.copy()
-            if df.iloc[-2]['일자'] != df.iloc[-1]['일자']:
-                self.fDayOpen = PriceInfo['현재가']
+            if self.npPriceInfo == None:
+                self.npPriceInfo = PriceInfo.copy()
+                self.npPriceInfo['시가'] = df.iloc[-2]['시가']  # 전봉 정보 세팅
+                self.npPriceInfo['고가'] = df.iloc[-2]['고가']
+                self.npPriceInfo['저가'] = df.iloc[-2]['저가']
+                self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
+            if self.npPriceInfo['시가'] == 0:
+                self.fDayOpen = PriceInfo['시가']
                 self.fDayHigh_t1 = df[df['일자'] == df.iloc[-2]['일자']]['고가'].max()
                 self.fDayLow_t1 = df[df['일자'] == df.iloc[-2]['일자']]['저가'].min()
                 self.fDayClose_t1 = df.iloc[-2]['종가']
@@ -185,6 +190,7 @@ class TS_RB_0045():
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
         (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
             self.common()
+            df = self.lstData[self.ix]
             df.loc[len(df)-1, 'MP'] = df.iloc[-2]['MP']
             
 
