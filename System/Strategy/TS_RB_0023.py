@@ -50,7 +50,7 @@ class TS_RB_0023():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nAvgLen+self.nDisp)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix])
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
@@ -98,8 +98,8 @@ class TS_RB_0023():
 
         df = self.lstData[self.ix]
         if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
-            self.npPriceInfo = PriceInfo.copy()
-            if PriceInfo['현재가'] == PriceInfo['시가']:    # 시초가인 경우
+            if self.npPriceInfo == None:
+                self.npPriceInfo = PriceInfo.copy()
                 self.npPriceInfo['체결시간'] = df.iloc[-2]['시간']  # 전봉 정보 세팅
                 self.npPriceInfo['시가'] = df.iloc[-2]['시가']
                 self.npPriceInfo['고가'] = df.iloc[-2]['고가']
