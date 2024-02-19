@@ -10,9 +10,9 @@
 
 
 from System.strategy import Strategy
+from cmath import isnan
 
 import pandas as pd
-import datetime as dt
 import logging
 
 
@@ -51,24 +51,36 @@ class TS_RB_0048():
         self.strTarget = '픽싱 스퀘어'
         
 
+    # Position check & amount setup
+    def chkPos(self, amt=0):
+        if amt == 0:
+            self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+        else:
+            self.nPosition += amt
+        self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
+        self.amt_exit = abs(self.nPosition)
+
+    
     # 전략 실행
     def execute(self, PriceInfo):
-        if type(PriceInfo) == int:
+        if type(PriceInfo) == int:  # 최초 실행시
+            self.chkPos()
             return
 
         if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
-            self.npPriceInfo = PriceInfo.copy()
-            # return
+            if self.npPriceInfo == None:
+                self.npPriceInfo = PriceInfo.copy()
+            return
             
         # 분봉 업데이트 시
         if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
         (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
-            if (not Strategy.dfArticle.empty) and (self.nPosition == 0):
-                strTitle = Strategy.dfArticle[Strategy.dfArticle['Title'].str.contains(self.strTarget)]['Title']
+            if (not Strategy.dfArticle.empty) and (self.nPosition == 0):    # 기사 읽어와서
+                strTitle = Strategy.dfArticle[Strategy.dfArticle['Title'].str.contains(self.strTarget)]['Title']    # 픽싱 기사 찾고
                 if not strTitle.empty:
-                    strFixing = strTitle.str.extract('([-+]?\d+\.?\d*)')
-                    if strFixing.notnull():
-                        fLevel = float(strFixing[0].values[0])
+                    strFixing = strTitle.str.extract('([-+]?\d+\.?\d*)')    # 픽싱 레벨 추출해서
+                    fLevel = float(strFixing[0].values[0])
+                    if not isnan(fLevel): # '파'가 아니면 진입
                         if fLevel > 0:
                             Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])
                             self.logger.info('Buy %s amount ordered', self.amt_entry)
