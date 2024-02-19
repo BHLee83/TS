@@ -259,6 +259,7 @@ class Interface():
 
 
     def scheduling(self): # 종가 주문, 뉴스 수신 등 스케줄링 프로세스
+        self.objArticle.reqTR(" ", "1", self.strToday)  # 당일 뉴스 조회 (20건 제한 때문에 1초마다)
         now = QTime.currentTime()
         if now >= self.qtTarget:
             for i in self.lstObj_Strategy:
@@ -267,8 +268,6 @@ class Interface():
             
             self.orderStrategy()    # 접수된 주문 실행
             self.timer.stop()
-        if now.second() == 59:  # 매분 정각 1초전
-            self.objArticle.reqTR(" ", "1", self.strToday)  # 당일 뉴스 조회 (20건 제한)
 
 
     # 주문 실행
