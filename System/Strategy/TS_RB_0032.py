@@ -65,7 +65,7 @@ class TS_RB_0032():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nLen3*2)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nLen3*10)
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
@@ -97,18 +97,6 @@ class TS_RB_0032():
             df.loc[i, 'MP'] = df['MP'][i-1]
             df.loc[i, 'EntryLv'] = df['EntryLv'][i-1]
             df.loc[i, 'ExitLv'] = df['ExitLv'][i-1]
-            
-            # Entry
-            if df['MP'][i] != 1:
-                if (df['AvgVal'][i-1] > df['AvgVal'][i-self.nLen2-1]) and (df['종가'][i-1] < df['종가'][i-self.nLen2-1]) and (df['종가'][i-1] > df['종가'][i-self.nLen3-1]):
-                    df.loc[i, 'MP'] = 1
-                    df.loc[i, 'EntryLv'] = df['시가'][i]
-                    self.nLoc = i
-            if df['MP'][i] != -1:
-                if (df['AvgVal'][i-1] < df['AvgVal'][i-self.nLen2-1]) and (df['종가'][i-1] > df['종가'][i-self.nLen2-1]) and (df['종가'][i-1] < df['종가'][i-self.nLen3-1]):
-                    df.loc[i, 'MP'] = -1
-                    df.loc[i, 'EntryLv'] = df['시가'][i]
-                    self.nLoc = i
             
             # Exit
             if df['MP'][i-1] != 0:
@@ -169,6 +157,18 @@ class TS_RB_0032():
                         self.fES_BPS = max(df['고가'][i-2:i+1])
                     self.fES_PS = abs(df['EntryLv'][i]) + df['ATR'][i] * self.nProtectiveATRs
                     self.fES_TS = self.fPosLow + df['ATR'][i] * self.nTrailingATRs
+                    
+            # Entry
+            if df['MP'][i] != 1:
+                if (df['AvgVal'][i-1] > df['AvgVal'][i-self.nLen2-1]) and (df['종가'][i-1] < df['종가'][i-self.nLen2-1]) and (df['종가'][i-1] > df['종가'][i-self.nLen3-1]):
+                    df.loc[i, 'MP'] = 1
+                    df.loc[i, 'EntryLv'] = df['시가'][i]
+                    self.nLoc = i
+            if df['MP'][i] != -1:
+                if (df['AvgVal'][i-1] < df['AvgVal'][i-self.nLen2-1]) and (df['종가'][i-1] > df['종가'][i-self.nLen2-1]) and (df['종가'][i-1] < df['종가'][i-self.nLen3-1]):
+                    df.loc[i, 'MP'] = -1
+                    df.loc[i, 'EntryLv'] = df['시가'][i]
+                    self.nLoc = i
 
 
     # 전략 실행
@@ -183,13 +183,13 @@ class TS_RB_0032():
             tNow = dt.now().time()
             if tNow.hour < 9:   # 9시 전이면
                 if (df.iloc[-1]['MP'] != 1) and (df.iloc[-2]['MP'] != 1):
-                    if (df.iloc[-2]['AvgVal'] > df.iloc[self.nLen2-2]['AvgVal']) and (df.iloc[-2]['종가'] < df.iloc[self.nLen2-2]['종가']) and (df.iloc[-2]['종가'] > df.iloc[self.nLen3-2]['종가']):
+                    if (df.iloc[-2]['AvgVal'] > df.iloc[-self.nLen2-2]['AvgVal']) and (df.iloc[-2]['종가'] < df.iloc[-self.nLen2-2]['종가']) and (df.iloc[-2]['종가'] > df.iloc[-self.nLen3-2]['종가']):
                         Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, 0)   # 동호 매수
                         df.loc[len(df)-1, 'MP'] = 1
                         self.logger.info('Buy %s amount ordered', self.amt_entry)
                         self.chkPos(self.amt_entry)
                 if (df.iloc[-1]['MP'] != -1) and (df.iloc[-2]['MP'] != 1):
-                    if (df.iloc[-2]['AvgVal'] < df.iloc[self.nLen2-2]['AvgVal']) and (df.iloc[-2]['종가'] > df.iloc[self.nLen2-2]['종가']) and (df.iloc[-2]['종가'] < df.iloc[self.nLen3-2]['종가']):
+                    if (df.iloc[-2]['AvgVal'] < df.iloc[-self.nLen2-2]['AvgVal']) and (df.iloc[-2]['종가'] > df.iloc[-self.nLen2-2]['종가']) and (df.iloc[-2]['종가'] < df.iloc[-self.nLen3-2]['종가']):
                         Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, 0)   # 동호 매도
                         df.loc[len(df)-1, 'MP'] = -1
                         self.logger.info('Sell %s amount ordered', self.amt_entry)
@@ -198,8 +198,8 @@ class TS_RB_0032():
 
         df = self.lstData[self.ix]
         if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
-            self.npPriceInfo = PriceInfo.copy()
-            if PriceInfo['현재가'] == PriceInfo['시가']:    # 시초가인 경우
+            if self.npPriceInfo == None:
+                self.npPriceInfo = PriceInfo.copy()
                 self.npPriceInfo['체결시간'] = df.iloc[-2]['시간']  # 전봉 정보 세팅
                 self.npPriceInfo['시가'] = df.iloc[-2]['시가']
                 self.npPriceInfo['고가'] = df.iloc[-2]['고가']
@@ -210,48 +210,48 @@ class TS_RB_0032():
             return
 
         # Exit
-        if (df.iloc[-2]['MP'] == 1) and (df.iloc[-1]['MP'] == 1):   # EL
+        if (df.iloc[-2]['MP'] == 1) and (df.iloc[-3]['MP'] == 1):   # EL
             if self.fEL_BPS != 0.0: # Big Profit Stop
                 if (self.npPriceInfo['현재가'] >= self.fEL_BPS) and (PriceInfo['현재가'] <= self.fEL_BPS):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
                     self.logger.info('EL_BPS %s amount ordered', self.amt_exit)
-                    df.loc[len(df)-1, 'MP'] = 0
+                    df.loc[len(df)-2, 'MP'] = 0
                     self.fEL_BPS = 0.0
                     self.chkPos(-self.amt_exit)
             if self.fEL_PS != 0.0:  # Protective Stop
                 if (self.npPriceInfo['현재가'] >= self.fEL_PS) and (PriceInfo['현재가'] <= self.fEL_PS):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
                     self.logger.info('EL_PS %s amount ordered', self.amt_exit)
-                    df.loc[len(df)-1, 'MP'] = 0
+                    df.loc[len(df)-2, 'MP'] = 0
                     self.fEL_PS = 0.0
                     self.chkPos(-self.amt_exit)
             if self.fEL_TS != 0.0:  # Trailing Stop
                 if (self.npPriceInfo['현재가'] >= self.fEL_TS) and (PriceInfo['현재가'] <= self.fEL_TS):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
                     self.logger.info('EL_TS %s amount ordered', self.amt_exit)
-                    df.loc[len(df)-1, 'MP'] = 0
+                    df.loc[len(df)-2, 'MP'] = 0
                     self.fEL_TS = 0.0
                     self.chkPos(-self.amt_exit)
-        if (df.iloc[-2]['MP'] == -1) and (df.iloc[-1]['MP'] == -1):   # ES
+        if (df.iloc[-2]['MP'] == -1) and (df.iloc[-3]['MP'] == -1):   # ES
             if self.fES_BPS != 0.0: # Big Profit Stop
                 if (self.npPriceInfo['현재가'] <= self.fES_BPS) and (PriceInfo['현재가'] >= self.fES_BPS):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
                     self.logger.info('ES_BPS %s amount ordered', self.amt_exit)
-                    df.loc[len(df)-1, 'MP'] = 0
+                    df.loc[len(df)-2, 'MP'] = 0
                     self.fES_BPS = 0.0
                     self.chkPos(self.amt_exit)
             if self.fES_PS != 0.0:  # Protective Stop
                 if (self.npPriceInfo['현재가'] <= self.fES_PS) and (PriceInfo['현재가'] >= self.fES_PS):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
                     self.logger.info('ES_PS %s amount ordered', self.amt_exit)
-                    df.loc[len(df)-1, 'MP'] = 0
+                    df.loc[len(df)-2, 'MP'] = 0
                     self.fES_PS = 0.0
                     self.chkPos(self.amt_exit)
             if self.fES_TS != 0.0:  # Trailing Stop
                 if (self.npPriceInfo['현재가'] <= self.fES_TS) and (PriceInfo['현재가'] >= self.fES_TS):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
                     self.logger.info('ES_TS %s amount ordered', self.amt_exit)
-                    df.loc[len(df)-1, 'MP'] = 0
+                    df.loc[len(df)-2, 'MP'] = 0
                     self.fES_TS = 0.0
                     self.chkPos(self.amt_exit)
 

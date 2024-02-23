@@ -153,22 +153,6 @@ class TS_RB_0033():
                             df.loc[i, 'MP'] -= 1
                         self.fSellPrice2 = 0.0
                 
-                if (self.bLSetup and df['MP'][i] < 1) or (self.bBFlag and abs(df['MP'][i]) < 3):    # setup
-                    if df['MP'][i] < 1:
-                        self.fBuyPrice1 = df['고가'][i] + 1
-                    else:
-                        self.fBuyPrice2 = df['TRIA1'][i] + 1
-                else:
-                    self.fBuyPrice1 = 0.0
-                    self.fBuyPrice2 = 0.0
-                if (self.bSSetup and df['MP'][i] > -1) or (self.bSFlag and abs(df['MP'][i]) < 3):
-                    if df['MP'][i] > -1:
-                        self.fSellPrice1 = df['저가'][i] - 1
-                    else:
-                        self.fSellPrice2 = df['TRIA1'][i] - 1
-                else:
-                    self.fSellPrice1 = 0.0
-                    self.fSellPrice2 = 0.0
 
                 # Exit
                 if (df['MP'][i-1] > 0) and (df['MP'][i] > 0):    # execution
@@ -188,7 +172,7 @@ class TS_RB_0033():
                         df.loc[i, 'MP'] = 0
                         self.fES = 0.0
             
-            # Setup
+            # Entry setup
             if df['TRIA1'][i] > df['TRIA2'][i]:
                 self.bLSetup = True
             else:
@@ -211,7 +195,24 @@ class TS_RB_0033():
             else:
                 self.bSFlag = False
 
-            if df['MP'][i] > 0:    # setup
+            if (self.bLSetup and df['MP'][i] < 1) or (self.bBFlag and abs(df['MP'][i]) < 3):    # setup
+                if df['MP'][i] < 1:
+                    self.fBuyPrice1 = df['고가'][i] + 1
+                else:
+                    self.fBuyPrice2 = df['TRIA1'][i] + 1
+            else:
+                self.fBuyPrice1 = 0.0
+                self.fBuyPrice2 = 0.0
+            if (self.bSSetup and df['MP'][i] > -1) or (self.bSFlag and abs(df['MP'][i]) < 3):
+                if df['MP'][i] > -1:
+                    self.fSellPrice1 = df['저가'][i] - 1
+                else:
+                    self.fSellPrice2 = df['TRIA1'][i] - 1
+            else:
+                self.fSellPrice1 = 0.0
+                self.fSellPrice2 = 0.0
+
+            if df['MP'][i] > 0:    # Exit setup
                 self.fEL = df['TRIA2'][i] - 1
             if df['MP'][i] < 0:
                 self.fES = df['TRIA2'][i] + 1

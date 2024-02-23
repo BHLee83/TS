@@ -274,12 +274,12 @@ class TS_RB_0044():
         if self.isON == False:    # 당일 종가 청산
             df = self.lstData[self.ix]
             if self.nPosition > 0:
-                if (df.iloc[-2]['EntryLv'] > df.iloc[-2]['종가']) or (self.fDayLow < (self.fDayOpen - self.fDayRange_t1 * self.fR)):
+                if (df.iloc[-1]['EntryLv'] > df.iloc[-1]['종가']) or (self.fDayLow < (self.fDayOpen - self.fDayRange_t1 * self.fR)):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, 0)
                     self.logger.info('ExitLong %s amount ordered', self.amt_exit)
                     self.chkPos(-self.amt_exit)
             if self.nPosition < 0:
-                if (df.iloc[-2]['EntryLv'] < df.iloc[-2]['종가']) or (self.fDayHigh > (self.fDayOpen + self.fDayRange_t1 * self.fR)):
+                if (df.iloc[-1]['EntryLv'] < df.iloc[-1]['종가']) or (self.fDayHigh > (self.fDayOpen + self.fDayRange_t1 * self.fR)):
                     Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, 0)
                     self.logger.info('ExitShort %s amount ordered', self.amt_exit)
                     self.chkPos(self.amt_exit)
