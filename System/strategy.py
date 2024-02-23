@@ -29,7 +29,7 @@ class SingletonMeta(type):
 class Strategy(metaclass=SingletonMeta):
 
     # logger = logging.getLogger(__name__)  # 로그 생성
-
+    dtToday = dt.datetime.now().date()
     strToday = ''
     strT_1 = ''
     MARKETOPEN_HOUR = 0
@@ -285,7 +285,7 @@ class Strategy(metaclass=SingletonMeta):
         return True
             
 
-    def getHistData(productCode, timeframe, period:int=300):
+    def getHistData(productCode, asset_type, timeframe, period:int=300):
         # 1. 리스트에 있으면 넘겨주고
         for i in Strategy.lstMktData:
             if (i['PRODUCT_CODE'] == productCode) and (i['TIMEFRAME'] == timeframe):
@@ -299,9 +299,9 @@ class Strategy(metaclass=SingletonMeta):
         key = 'base_date'
         if all([timeframe != 'D', timeframe != 'W', timeframe != 'M']): # 분봉인 경우와 일봉 이상인 경우 테이블 나눠짐 (틱은 현재 고려 X)
             table += "_minute"
-            cond += "AND timeframe = '" + timeframe + "'"
+            cond += "AND timeframe='" + timeframe + "'"
             key += "time"
-        strQuery = f"SELECT * FROM {table} WHERE asset_name = '{asset_name}' AND maturity='0000' " + cond + f" ORDER BY {key}" # 0000: 연결선물
+        strQuery = f"SELECT * FROM {table} WHERE asset_name='{asset_name}' AND asset_type='{asset_type}' AND maturity='0000' " + cond + f" ORDER BY {key}" # 0000: 연결선물
         dfRet = Strategy.instDB.query_to_df(strQuery, 9999)
         if len(dfRet) != 0:
             df = pd.DataFrame(None)

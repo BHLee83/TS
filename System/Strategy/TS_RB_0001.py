@@ -56,7 +56,7 @@ class TS_RB_0001():
 
     # # 과거 데이터 로드
     # def getHistData(self):
-    #     data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nP2+1+30)
+    #     data = Strategy.getHistData(self.lstProductCode[self.ix], self.lstAssetType[self.ix], self.lstTimeFrame[self.ix], self.nP2+1+30)
     #     if type(data) == bool:
     #         if data == False:
     #             return pd.DataFrame(None)
@@ -67,7 +67,7 @@ class TS_RB_0001():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nP2+1)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstAssetType[self.ix], self.lstTimeFrame[self.ix], self.nP2+1)
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
@@ -114,7 +114,7 @@ class TS_RB_0001():
     def execute(self, PriceInfo):
         if type(PriceInfo) == int:  # 최초 실행시
             tNow = dt.now().time()
-            if tNow.hour < Strategy.MARKETOPEN_HOUR:   # 장 시작 전이면
+            if tNow.hour < Strategy.MARKETOPEN_HOUR+10:   # 장 시작 전이면
                 self.common()
                 self.chkPos()
 

@@ -43,7 +43,7 @@ class TS_RB_0006():
     # 공통 프로세스
     def common(self):
         # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstTimeFrame[self.ix], self.nWeek*50)
+        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstAssetType[self.ix], self.lstTimeFrame[self.ix], self.nWeek*50)
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
