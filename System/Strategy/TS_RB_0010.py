@@ -130,6 +130,24 @@ class TS_RB_0010():
             if df['ElderRay'][i] > df['ElderRay'][i-1]:
                 self.nERSellCond = 0
 
+            # Exit
+            if self.fSL != 0.0: # Stop loss
+                if (df['MP'][i-1] == 1) and (df['저가'][i] <= self.fSL):    # Exit long
+                    df.loc[i, 'MP'] = 0
+                    self.fSL = 0.0
+                if (df['MP'][i-1] == -1) and (df['고가'][i] >= self.fSL):    # Exit short
+                    df.loc[i, 'MP'] = 0
+                    self.fSL = 0.0
+
+            if self.fTS_EL != 0.0:  # Trail Stop
+                if (df['MP'][i-1] == 1) and (df['저가'][i] <= self.fTS_EL):
+                    df.loc[i, 'MP'] = 0
+                    self.fTS_EL = 0.0
+            if self.fTS_ES != 0.0:
+                if (df['MP'][i-1] == -1) and (df['고가'][i] >= self.fTS_ES):
+                    df.loc[i, 'MP'] = 0
+                    self.fTS_ES = 0.0
+
             # Entry
             if df['MP'][i] != 1:    # execution
                 if self.fBuyPrice != 0.0 and df['고가'][i] >= self.fBuyPrice:
@@ -151,24 +169,6 @@ class TS_RB_0010():
             else:
                 self.fSellPrice = 0.0
             
-            # Exit
-            if self.fSL != 0.0: # Stop loss
-                if (df['MP'][i-1] == 1) and (df['저가'][i] <= self.fSL):    # Exit long
-                    df.loc[i, 'MP'] = 0
-                    self.fSL = 0.0
-                if (df['MP'][i-1] == -1) and (df['고가'][i] >= self.fSL):    # Exit short
-                    df.loc[i, 'MP'] = 0
-                    self.fSL = 0.0
-
-            if self.fTS_EL != 0.0:  # Trail Stop
-                if (df['MP'][i-1] == 1) and (df['저가'][i] <= self.fTS_EL):
-                    df.loc[i, 'MP'] = 0
-                    self.fTS_EL = 0.0
-            if self.fTS_ES != 0.0:
-                if (df['MP'][i-1] == -1) and (df['고가'][i] >= self.fTS_ES):
-                    df.loc[i, 'MP'] = 0
-                    self.fTS_ES = 0.0
-
             if i >= self.nSwingP - 1:
                 if df['고가'][i] > max(df['고가'][i-self.nSwingP+1:i].values):  # 신고가
                     self.boolNewHigh = True
@@ -236,22 +236,6 @@ class TS_RB_0010():
                 self.npPriceInfo['저가'] = df.iloc[-2]['저가']
                 self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
         
-        # Entry
-        if (df.iloc[-1]['MP'] != 1) and (self.fBuyPrice != 0.0):
-            if (self.npPriceInfo['현재가'] <= self.fBuyPrice) and (PriceInfo['현재가'] >= self.fBuyPrice):
-                Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
-                df.loc[len(df)-1, 'MP'] = 1
-                self.fBuyPrice = 0.0
-                self.logger.info('Buy %s amount ordered', self.amt_entry)
-                self.chkPos(self.amt_entry)
-        if (df.iloc[-1]['MP'] != -1) and (self.fSellPrice != 0.0):
-            if (self.npPriceInfo['현재가'] >= self.fSellPrice) and (PriceInfo['현재가'] <= self.fSellPrice):
-                Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
-                df.loc[len(df)-1, 'MP'] = -1
-                self.fSellPrice = 0.0
-                self.logger.info('Sell %s amount ordered', self.amt_entry)
-                self.chkPos(-self.amt_entry)
-
         # Exit
         if self.fSL != 0.0: # Stop loss
             if df.iloc[-2]['MP'] == 1:
@@ -283,5 +267,21 @@ class TS_RB_0010():
                 self.fTS_ES = 0.0
                 self.logger.info('ExitShort %s amount ordered', self.amt_exit)
                 self.chkPos(self.amt_exit)
+
+        # Entry
+        if (df.iloc[-1]['MP'] != 1) and (self.fBuyPrice != 0.0):
+            if (self.npPriceInfo['현재가'] <= self.fBuyPrice) and (PriceInfo['현재가'] >= self.fBuyPrice):
+                Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])   # 매수
+                df.loc[len(df)-1, 'MP'] = 1
+                self.fBuyPrice = 0.0
+                self.logger.info('Buy %s amount ordered', self.amt_entry)
+                self.chkPos(self.amt_entry)
+        if (df.iloc[-1]['MP'] != -1) and (self.fSellPrice != 0.0):
+            if (self.npPriceInfo['현재가'] >= self.fSellPrice) and (PriceInfo['현재가'] <= self.fSellPrice):
+                Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])   # 매도
+                df.loc[len(df)-1, 'MP'] = -1
+                self.fSellPrice = 0.0
+                self.logger.info('Sell %s amount ordered', self.amt_entry)
+                self.chkPos(-self.amt_entry)
 
         self.npPriceInfo = PriceInfo.copy()
