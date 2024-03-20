@@ -1,4 +1,6 @@
+import sys
 import importlib
+import traceback
 import numpy as np
 import pandas as pd
 import datetime as dt
@@ -67,7 +69,7 @@ class Interface():
         file_handler = logging.FileHandler(log_path)    # log를 파일에 출력
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-
+        
         # Init. proc.
         self.userEnv = Account(self)
         self.price = Price(self)    # 정보(Historical) 시세 조회용
@@ -100,6 +102,27 @@ class Interface():
         self.timer = QTimer()
         self.timer.timeout.connect(self.scheduling)
         self.timer.start(1000)
+
+
+    # Writing call stack log when program crashed
+    def excepthook(exec_type, exec_value, exec_traceback):
+        logger = logging.getLogger(__name__)    # 로그 생성
+        logger.error(traceback.format_exc())
+        logger.error(traceback.format_exception(exec_type, exec_value, exec_traceback))
+        logger.error(traceback.format_exception_only(exec_type, exec_value))
+        # logger.error(traceback.format_list(traceback.format_stack()))
+        logger.error(traceback.format_tb(exec_traceback))
+        logger.error(traceback.print_exc())
+        logger.error(traceback.print_exception(exec_type, exec_value, exec_traceback))
+        # logger.error(traceback.print_exception_only(exec_type, exec_value))
+        logger.error(traceback.print_last(exec_traceback))
+        logger.error(traceback.print_stack(exec_traceback))
+        logger.error(traceback.print_tb(exec_traceback))
+        # logger.error(traceback.tb_lineno(exec_traceback))
+        logger.error(traceback.walk_tb(exec_traceback))
+        # logger.error(traceback.extract_stack(exec_traceback))
+        logger.error(traceback.extract_tb(exec_traceback))
+    sys.excepthook = excepthook
 
 
     def initDate(self):
@@ -263,8 +286,7 @@ class Interface():
         now = QTime.currentTime()
         if now >= self.qtTarget:
             for i in self.lstObj_Strategy:
-                if i.isON == False:
-                    i.lastProc()
+                i.lastProc()
             
             self.orderStrategy()    # 접수된 주문 실행
             self.timer.stop()
