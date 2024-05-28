@@ -13,7 +13,7 @@ class Article():
         self.dfArticleInfo = pd.DataFrame(None, columns=self.lstColumns)
 
         # Indi API event
-        self.IndiTR = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")
+        self.IndiTR = QAxWidget("SHINHANINDI.shinhanINDICtrl.1")
         self.IndiTR.ReceiveData.connect(self.ReceiveData)
         self.IndiTR.ReceiveSysMsg.connect(self.ReceiveSysMsg)
         self.rqidD = {} # TR 관리를 위해 사전 변수를 하나 생성합니다.

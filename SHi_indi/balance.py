@@ -8,8 +8,8 @@ class Balance():
         self.strCurrentAcnt = ''
 
         # 일반 TR OCX
-        self.IndiTR = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")
-        self.IndiReal = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")
+        self.IndiTR = QAxWidget("SHINHANINDI.shinhanINDICtrl.1")
+        self.IndiReal = QAxWidget("SHINHANINDI.shinhanINDICtrl.1")
         self.IndiTR.ReceiveData.connect(self.ReceiveData)
         self.IndiReal.ReceiveRTData.connect(self.ReceiveRTData)
         self.IndiTR.ReceiveSysMsg.connect(self.ReceiveSysMsg) # 일반 TR에 대한 응답을 받는 함수를 연결

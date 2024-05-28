@@ -11,7 +11,7 @@ class Price():
         self.instInterface = instInterface
         
         # 인디의 TR을 처리할 변수를 생성합니다.
-        self.IndiTR = QAxWidget("GIEXPERTCONTROL.GiExpertControlCtrl.1")
+        self.IndiTR = QAxWidget("SHINHANINDI.shinhanINDICtrl.1")
 
         # Indi API event
         self.IndiTR.ReceiveData.connect(self.ReceiveData)
