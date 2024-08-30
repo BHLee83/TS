@@ -4,300 +4,229 @@
 # 슬리피지: 0.05pt
 
 from System.strategy import Strategy
-from System.indicator import Indicator
 
 import pandas as pd
 import math
+import talib as ta
 import logging
 
 
 
-class TS_RB_0033():
+class TS_RB_0033_N():
     def __init__(self, info) -> None:
-        super().__init__()
         self.logger = logging.getLogger(__class__.__name__)  # 로그 생성
         self.logger.info('Init. start')
 
+        # 기본 설정 초기화
+        self._initialize(info)
+
+
+    def _initialize(self, info):
+        """ 초기 설정 값들을 처리하는 메서드 """
         # General info
         self.npPriceInfo = None
 
-        # Global setting variables
-        self.dfInfo = info
-        self.strName = self.dfInfo['NAME']
-        self.lstAssetCode = self.dfInfo['ASSET_CODE'].split(',') # 거래대상은 여러개일 수 있음
-        self.lstAssetType = self.dfInfo['ASSET_TYPE'].split(',')
-        self.lstUnderId = self.dfInfo['UNDERLYING_ID'].split(',')
-        self.lstTimeFrame = self.dfInfo['TIMEFRAME'].split(',')
-        self.isON = bool(int(self.dfInfo['OVERNIGHT']))
-        self.isPyramid = bool(int(self.dfInfo['PYRAMID']))
-        self.lstTrUnit = list(map(int, self.dfInfo['TR_UNIT'].split(',')))
-        self.fWeight = self.dfInfo['WEIGHT']
+        # 전략 정보 초기화
+        self.strName = info['NAME']
+        self.lstAssetCode = info['ASSET_CODE'].split(',') # 거래대상은 여러개일 수 있음
+        self.lstAssetType = info['ASSET_TYPE'].split(',')
+        self.lstUnderId = info['UNDERLYING_ID'].split(',')
+        self.lstTimeFrame = info['TIMEFRAME'].split(',')
+        self.isON = bool(int(info['OVERNIGHT']))
+        self.isPyramid = bool(int(info['PYRAMID']))
+        self.lstTrUnit = list(map(int, info['TR_UNIT'].split(',')))
+        self.fWeight = info['WEIGHT']
 
+        # 상품 정보 및 시간 관련 설정
         self.lstProductCode = Strategy.setProductCode(self.lstUnderId)
-        self.lstProductNCode = list(map(lambda x: 'KRDRVFU'+x, self.lstUnderId))    # for SHi-indi spec. 연결선물 코드
+        # self.lstProductNCode = list(map(lambda x: 'KRDRVFU'+x, self.lstUnderId))    # for SHi-indi spec. 연결선물 코드
+        self.lstProductNCode = [f'KRDRVFU{x}' for x in self.lstUnderId]    # for SHi-indi spec. 연결선물 코드
         self.lstTimeFrame_tmp = Strategy.setTimeFrame(self.lstTimeFrame)  # for SHi-indi spec.
-        self.lstTimeWnd = self.lstTimeFrame_tmp[0]
-        self.lstTimeIntrvl = self.lstTimeFrame_tmp[1]
+        self.lstTimeWnd, self.lstTimeIntrvl = self.lstTimeFrame_tmp
         self.ix = 0 # 대상 상품의 인덱스
         self.nPosition = 0
-        self.amt_entry = 0
-        self.amt_exit = 0
-
-        # Local setting variables
+        
+        # 로컬 변수 초기화
         self.lstData = [pd.DataFrame(None)] * len(self.lstAssetCode)
-        self.strMarket_close_time = str(Strategy.MARKETCLOSE_HOUR) + str(Strategy.MARKETCLOSE_MIN) + '00'
+        self._initialize_local_variables()
+
+    def _initialize_local_variables(self):
+        """ 로컬 변수 초기화 메서드 """
         self.nFLen = 5
         self.nSLen = 30
         self.nADXLen = 12
-        self.bLSetup = False
-        self.bSSetup = False
-        self.bBFlag = False
-        self.bSFlag = False
+        self.bLSetup = self.bSSetup = False
+        self.bBFlag = self.bSFlag = False
         self.bADXSetup = False
-        self.fBuyPrice1 = 0.0
-        self.fBuyPrice2 = 0.0
-        self.fSellPrice1 = 0.0
-        self.fSellPrice2 = 0.0
-        self.fEL = 0.0
-        self.fES = 0.0
+        self.fBuyPrice1 = self.fBuyPrice2 = 0.0
+        self.fSellPrice1 = self.fSellPrice2 = 0.0
+        self.fEL = self.fES = 0.0
+        self.amt_entry = self.amt_exit = 0
         
 
-    # 공통 프로세스
-    def common(self):
-        # Data load & apply
-        self.lstData[self.ix] = Strategy.getHistData(self.lstProductCode[self.ix], self.lstAssetType[self.ix], self.lstTimeFrame[self.ix], int(400/int(self.lstTimeIntrvl[self.ix]))*10)
+    def _dataLoad(self):
+        """ 공통 데이터 로드 """
+        self.lstData[self.ix] = Strategy.getHistData(
+            self.lstProductCode[self.ix],
+            self.lstAssetType[self.ix],
+            self.lstTimeFrame[self.ix],
+            int(400 / int(self.lstTimeIntrvl[self.ix])) * self.nSLen + 1
+        )
+
         if self.lstData[self.ix].empty:
             self.logger.warning('과거 데이터 로드 실패. 전략이 실행되지 않습니다.')
             return False
-        self.applyChart()   # 전략 적용
+        return True
 
 
-    # Position check & amount setup
-    def chkPos(self, amt=0):
+    def _chkPos(self, amt=0):
+        """ 포지션 확인 및 수량 업데이트 """
         if amt == 0:
-            self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])    # 포지션 확인 및 수량 지정
+            self.nPosition = Strategy.getPosition(self.strName, self.lstAssetCode[self.ix], self.lstAssetType[self.ix])
         else:
             self.nPosition += amt
         self.amt_entry = abs(self.nPosition) + self.lstTrUnit[self.ix] * self.fWeight
         self.amt_exit = abs(self.nPosition)
 
 
-    # 전략 적용
-    def applyChart(self):   # Strategy apply on historical chart
-        df = self.lstData[self.ix]
+    def _calcParam(self):
+        """ 파라미터 계산 및 매수/매도 조건 설정 """
+        df = self.lstData[self.ix][-(self.nSLen+1):-1]  # 가능한 최소한의 데이터만 사용
+        MP = self.nPosition / (self.lstTrUnit[self.ix] * self.fWeight)
 
-        FLen = math.ceil((self.nFLen+1)*0.5)
-        SLen = math.ceil((self.nSLen+1)*0.5)
-        tmp1 = Indicator.MA(df['종가'], FLen)
-        tmp2 = Indicator.MA(df['종가'], SLen)
-        df['TRIA1'] = Indicator.MA(tmp1, FLen)
-        df['TRIA2'] = Indicator.MA(tmp2, SLen)
-        df['ADXVal'] = Indicator.ADX(df['고가'], df['저가'], df['종가'], self.nADXLen)
+        # 파라미터 계산
+        FLen, SLen = math.ceil((self.nFLen+1)*0.5), math.ceil((self.nSLen+1)*0.5)
+        df['TRIA1'] = ta.MA(ta.MA(df['종가'], FLen), FLen)
+        df['TRIA2'] = ta.MA(ta.MA(df['종가'], SLen), SLen)
+        df['ADXVal'] = ta.ADX(df['고가'], df['저가'], df['종가'], self.nADXLen)
 
-        df['MP'] = 0
-        df['EntryLv'] = 0.0
-        df['ExitLv'] = 0.0
-        dfSignal = pd.DataFrame(None, columns=df.columns)
-        for i in df.index-1:
-            if i < self.nSLen:
-                continue
-            
-            df.loc[i, 'MP'] = df['MP'][i-1]
-            df.loc[i, 'EntryLv'] = df['EntryLv'][i-1]
-            df.loc[i, 'ExitLv'] = df['ExitLv'][i-1]
-            
-            if df['시간'][i] != self.strMarket_close_time:
-                # Entry
-                if df['MP'][i] <= 0:
-                    if self.fBuyPrice1 != 0.0 and df['고가'][i] >= self.fBuyPrice1:    # execution
-                        if df['시가'][i] > self.fBuyPrice1:
-                            df.loc[i, 'EntryLv'] = df['시가'][i]
-                        else:
-                            df.loc[i, 'EntryLv'] = self.fBuyPrice1
-                        if df['MP'][i-1] < 0:
-                            df.loc[i, 'MP'] = 1
-                        else:
-                            df.loc[i, 'MP'] += 1
-                        self.fBuyPrice1 = 0.0
-                else:
-                    if self.fBuyPrice2 != 0.0 and df['고가'][i] >= self.fBuyPrice2:
-                        if df['시가'][i] > self.fBuyPrice2:
-                            df.loc[i, 'EntryLv'] = df['시가'][i]
-                        else:
-                            df.loc[i, 'EntryLv'] = self.fBuyPrice2
-                        if df['MP'][i-1] < 0:
-                            df.loc[i, 'MP'] = 1
-                        else:
-                            df.loc[i, 'MP'] += 1
-                        self.fBuyPrice2 = 0.0
-                if df['MP'][i] >= 0:
-                    if self.fSellPrice1 != 0.0 and df['저가'][i] <= self.fSellPrice1:
-                        if df['시가'][i] < self.fSellPrice1:
-                            df.loc[i, 'EntryLv'] = df['시가'][i]
-                        else:
-                            df.loc[i, 'EntryLv'] = self.fSellPrice1
-                        if df['MP'][i-1] > 0:
-                            df.loc[i, 'MP'] = -1
-                        else:
-                            df.loc[i, 'MP'] -= 1
-                        self.fSellPrice1 = 0.0
-                else:
-                    if self.fSellPrice2 != 0.0 and df['저가'][i] <= self.fSellPrice2:
-                        if df['시가'][i] < self.fSellPrice2:
-                            df.loc[i, 'EntryLv'] = df['시가'][i]
-                        else:
-                            df.loc[i, 'EntryLv'] = self.fSellPrice2
-                        if df['MP'][i-1] > 0:
-                            df.loc[i, 'MP'] = -1
-                        else:
-                            df.loc[i, 'MP'] -= 1
-                        self.fSellPrice2 = 0.0
-                
-
-                # Exit
-                if (df['MP'][i-1] > 0) and (df['MP'][i] > 0):    # execution
-                    if self.fEL != 0.0 and df['저가'][i] <= self.fEL:
-                        if df['시가'][i] < self.fEL:
-                            df.loc[i, 'ExitLv'] = df['시가'][i]
-                        else:
-                            df.loc[i, 'ExitLv'] = self.fEL
-                        df.loc[i, 'MP'] = 0
-                        self.fEL = 0.0
-                if (df['MP'][i-1] < 0) and (df['MP'][i] < 0):
-                    if self.fES != 0.0 and df['고가'][i] >= self.fES:
-                        if df['시가'][i] > self.fES:
-                            df.loc[i, 'ExitLv'] = df['시가'][i]
-                        else:
-                            df.loc[i, 'ExitLv'] = self.fES
-                        df.loc[i, 'MP'] = 0
-                        self.fES = 0.0
-            
-            # Entry setup
-            if df['TRIA1'][i] > df['TRIA2'][i]:
-                self.bLSetup = True
-            else:
-                self.bLSetup = False
-            if df['TRIA1'][i] < df['TRIA2'][i]:
-                self.bSSetup = True
-            else:
-                self.bSSetup = False
-            if df['ADXVal'][i] > df['ADXVal'][i-self.nFLen]:
-                self.bADXSetup = True
-            else:
-                self.bADXSetup = False
-                
-            if self.bLSetup and self.bADXSetup and df['고가'][i] < df['TRIA1'][i]:
-                self.bBFlag = True
-            else:
-                self.bBFlag = False
-            if self.bSSetup and self.bADXSetup and df['저가'][i] > df['TRIA1'][i]:
-                self.bSFlag = True
-            else:
-                self.bSFlag = False
-
-            if (self.bLSetup and df['MP'][i] < 1) or (self.bBFlag and abs(df['MP'][i]) < 3):    # setup
-                if df['MP'][i] < 1:
-                    self.fBuyPrice1 = df['고가'][i] + 1
-                else:
-                    self.fBuyPrice2 = df['TRIA1'][i] + 1
-            else:
-                self.fBuyPrice1 = 0.0
-                self.fBuyPrice2 = 0.0
-            if (self.bSSetup and df['MP'][i] > -1) or (self.bSFlag and abs(df['MP'][i]) < 3):
-                if df['MP'][i] > -1:
-                    self.fSellPrice1 = df['저가'][i] - 1
-                else:
-                    self.fSellPrice2 = df['TRIA1'][i] - 1
-            else:
-                self.fSellPrice1 = 0.0
-                self.fSellPrice2 = 0.0
-
-            if df['MP'][i] > 0:    # Exit setup
-                self.fEL = df['TRIA2'][i] - 1
-            if df['MP'][i] < 0:
-                self.fES = df['TRIA2'][i] + 1
-
-            # Position check
-            if df['MP'][i] != df['MP'][i-1]:
-                dfSignal.loc[len(dfSignal)] = df.loc[i, :]
+        # Setup 설정
+        last_row = df.iloc[-1]  # 마지막 행 캐싱
+        self._reset_flags()
+        self._update_flags(last_row, df)
+        self._calculate_entry_exit_prices(last_row, MP)
 
 
-    # 전략 실행
+    def _reset_flags(self):
+        """ 초기 플래그 값 리셋 """
+        self.bLSetup = self.bSSetup = False
+        self.bBFlag = self.bSFlag = False
+        self.bADXSetup = False
+        self.fBuyPrice1 = self.fBuyPrice2 = 0.0
+        self.fSellPrice1 = self.fSellPrice2 = 0.0
+
+
+    def _update_flags(self, last_row, df):
+        """ 플래그 업데이트 """
+        if last_row['TRIA1'] > last_row['TRIA2']:
+            self.bLSetup = True
+        if last_row['TRIA1'] < last_row['TRIA2']:
+            self.bSSetup = True
+        if last_row['ADXVal'] > df['ADXVal'].iloc[-self.nFLen-1]:
+            self.bADXSetup = True
+        if self.bLSetup and self.bADXSetup and last_row['고가'] < last_row['TRIA1']:
+            self.bBFlag = True
+        if self.bSSetup and self.bADXSetup and last_row['저가'] > last_row['TRIA1']:
+            self.bSFlag = True
+
+
+    def _calculate_entry_exit_prices(self, last_row, MP):
+        """ 진입/청산 가격 계산 """
+        if (self.bLSetup and MP < 1) or (self.bBFlag and abs(MP) < 3):  # Entry setup
+            self.fBuyPrice1, self.fBuyPrice2 = (last_row['고가'] + 1, 0.0) if MP < 1 else (0.0, last_row['TRIA1'] + 1)
+        if (self.bSSetup and MP > -1) or (self.bSFlag and abs(MP) < 3):
+            self.fSellPrice1, self.fSellPrice2 = (last_row['저가'] - 1, 0.0) if MP > -1 else (0.0, last_row['TRIA1'] - 1)
+
+        if MP > 0:    # Exit setup
+            self.fEL = last_row['TRIA2'] - 1
+        elif MP < 0:
+            self.fES = last_row['TRIA2'] + 1
+
+
     def execute(self, PriceInfo):
-        if type(PriceInfo) == int:  # 최초 실행시
-            self.common()
-            self.chkPos()
-            self.lstData[self.ix].loc[len(self.lstData[self.ix])-1, 'MP'] = self.lstData[self.ix].iloc[-2]['MP']
+        """ 전략 실행 """
+        if isinstance(PriceInfo, int):  # 최초 실행시
+            if not self._dataLoad():
+                return  # 데이터 로드 실패 시 종료
+            self._chkPos()
+            self._calcParam()    # 파라미터 계산
             return
         
-        df = self.lstData[self.ix]
-        if (self.npPriceInfo == None) or (self.npPriceInfo['시가'] == 0):    # 첫 데이터 수신시
-            if self.npPriceInfo == None:
-                self.npPriceInfo = PriceInfo.copy()
-                self.npPriceInfo['시가'] = df.iloc[-2]['시가']  # 전봉 정보 세팅
-                self.npPriceInfo['고가'] = df.iloc[-2]['고가']
-                self.npPriceInfo['저가'] = df.iloc[-2]['저가']
-                self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
+        if self.npPriceInfo is None:
+            self.npPriceInfo = PriceInfo.copy()
+            return
 
-        # 분봉 업데이트 시
-        if (str(self.npPriceInfo['체결시간'])[4:6] != str(PriceInfo['체결시간'])[4:6]) and \
-        (int(str(PriceInfo['체결시간'])[4:6]) % int(self.lstTimeIntrvl[self.ix]) == 0):
-            self.common()
-            df = self.lstData[self.ix]
-            df.loc[len(df)-1, 'MP'] = df.iloc[-2]['MP']
-            
+        if self.npPriceInfo['시가'] == 0:   # 첫 데이터 수신시
+            self._initialize_first_data(self.lstData[self.ix])
 
-        # Entry
-        if self.fBuyPrice1 != 0.0:
-            if (self.nPosition <= 0) and (df.iloc[-1]['MP'] <= 0):
-                if (self.npPriceInfo['현재가'] <= self.fBuyPrice1) and (PriceInfo['현재가'] >= self.fBuyPrice1):
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.amt_entry, PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] = 1
-                    self.fBuyPrice1 = 0.0
-                    self.logger.info('Buy %s amount ordered', self.amt_entry)
-                    self.chkPos(self.amt_entry)
-        if self.fBuyPrice2 != 0.0:
-            if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0):
-                if (self.npPriceInfo['현재가'] <= self.fBuyPrice2) and (PriceInfo['현재가'] >= self.fBuyPrice2):
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'B', self.lstTrUnit[self.ix], PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] += 1
-                    self.fBuyPrice2 = 0.0
-                    self.logger.info('Buy %s amount ordered', self.lstTrUnit[self.ix])
-                    self.chkPos(self.lstTrUnit[self.ix])
+        if self._should_update_candle(PriceInfo):
+            if not self._dataLoad():
+                return  # 데이터 로드 실패 시 종료
+            self._calcParam()
 
-        if self.fSellPrice1 != 0.0:
-            if (self.nPosition >= 0) and (df.iloc[-1]['MP'] >= 0):
-                if (self.npPriceInfo['현재가'] >= self.fSellPrice1) and (PriceInfo['현재가'] <= self.fSellPrice1):
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.amt_entry, PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] = -1
-                    self.fSellPrice1 = 0.0
-                    self.logger.info('Sell %s amount ordered', self.amt_entry)
-                    self.chkPos(-self.amt_entry)
-        if self.fSellPrice2 != 0.0:
-            if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
-                if (self.npPriceInfo['현재가'] >= self.fSellPrice2) and (PriceInfo['현재가'] <= self.fSellPrice2):
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'S', self.lstTrUnit[self.ix], PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] -= 1
-                    self.fSellPrice2 = 0.0
-                    self.logger.info('Sell %s amount ordered', self.lstTrUnit[self.ix])
-                    self.chkPos(-self.lstTrUnit[self.ix])
-
-        # Exit
-        if self.fEL != 0.0:
-            if (self.nPosition > 0) and (df.iloc[-1]['MP'] > 0):
-                if self.npPriceInfo['현재가'] >= self.fEL and PriceInfo['현재가'] <= self.fEL:
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'EL', self.amt_exit, PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] = 0
-                    self.fEL = 0.0
-                    self.logger.info('ExitLong %s amount ordered', self.amt_exit)
-                    self.chkPos(-self.amt_exit)
-        if self.fES != 0.0:
-            if (self.nPosition < 0) and (df.iloc[-1]['MP'] < 0):
-                if self.npPriceInfo['현재가'] <= self.fES and PriceInfo['현재가'] >= self.fES:
-                    Strategy.setOrder(self.strName, self.lstProductCode[self.ix], 'ES', self.amt_exit, PriceInfo['현재가'])
-                    df.loc[len(df)-1, 'MP'] = 0
-                    self.fES = 0.0
-                    self.logger.info('ExitShort %s amount ordered', self.amt_exit)
-                    self.chkPos(self.amt_exit)
-
+        self._handle_entry_exit(PriceInfo)
         self.npPriceInfo = PriceInfo.copy()
+
+
+    def _initialize_first_data(self, df):
+        """ 시가 수신 시 처리 """
+        self.npPriceInfo['시가'] = df.iloc[-2]['시가']  # 전봉 정보 세팅
+        self.npPriceInfo['고가'] = df.iloc[-2]['고가']
+        self.npPriceInfo['저가'] = df.iloc[-2]['저가']
+        self.npPriceInfo['현재가'] = df.iloc[-2]['종가']
+
+
+    def _should_update_candle(self, PriceInfo):
+        """ 분봉 업데이트 여부 확인 """
+        prev_time = int(str(self.npPriceInfo['체결시간'])[4:6])
+        curr_time = int(str(PriceInfo['체결시간'])[4:6])
+        return prev_time != curr_time and curr_time % int(self.lstTimeIntrvl[self.ix]) == 0
+    
+
+    def _handle_entry_exit(self, PriceInfo):
+        """ 진입/청산 로직 처리 """
+        self._process_buy_orders(PriceInfo)
+        self._process_sell_orders(PriceInfo)
+        self._process_exit_orders(PriceInfo)
+
+
+    def _process_buy_orders(self, PriceInfo):
+        """ 매수 주문 처리 """
+        if self.fBuyPrice1 and self.nPosition <= 0 and self._is_buy_condition_met(PriceInfo, self.fBuyPrice1):
+            self._place_order('B', self.amt_entry, PriceInfo, 'B1')
+        elif self.fBuyPrice2 and self.nPosition > 0 and self._is_buy_condition_met(PriceInfo, self.fBuyPrice2):
+            self._place_order('B', self.lstTrUnit[self.ix], PriceInfo, 'B2')
+
+
+    def _process_sell_orders(self, PriceInfo):
+        """ 매도 주문 처리 """
+        if self.fSellPrice1 and self.nPosition >= 0 and self._is_sell_condition_met(PriceInfo, self.fSellPrice1):
+            self._place_order('S', self.amt_entry, PriceInfo, 'S1')
+        elif self.fSellPrice2 and self.nPosition < 0 and self._is_sell_condition_met(PriceInfo, self.fSellPrice2):
+            self._place_order('S', self.lstTrUnit[self.ix], PriceInfo, 'S2')
+
+
+    def _process_exit_orders(self, PriceInfo):
+        """ 청산 주문 처리 """
+        if self.fEL and self.nPosition > 0 and self._is_sell_condition_met(PriceInfo, self.fEL):
+            self._place_order('EL', self.amt_exit, PriceInfo, 'EL')
+        elif self.fES and self.nPosition < 0 and self._is_buy_condition_met(PriceInfo, self.fES):
+            self._place_order('ES', self.amt_exit, PriceInfo, 'ES')
+
+
+    def _is_buy_condition_met(self, PriceInfo, buy_price):
+        """ 매수 조건 확인 """
+        return self.npPriceInfo['현재가'] <= buy_price and PriceInfo['현재가'] >= buy_price
+
+
+    def _is_sell_condition_met(self, PriceInfo, sell_price):
+        """ 매도 조건 확인 """
+        return self.npPriceInfo['현재가'] >= sell_price and PriceInfo['현재가'] <= sell_price
+
+
+    def _place_order(self, order_type, amount, PriceInfo, price_label):
+        """ 주문 실행 및 로그 출력 """
+        Strategy.setOrder(self.strName, self.lstProductCode[self.ix], order_type, amount, PriceInfo['현재가'])
+        self.logger.info(f"{price_label} {amount} amount ordered at {PriceInfo['현재가']}")
+        # setattr(self, price_label, 0.0) # 주문 완료 후 가격을 0으로 초기화
+        self._chkPos(amount if (order_type == 'B' or order_type == 'ES') else -amount)
